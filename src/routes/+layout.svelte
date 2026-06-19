@@ -1,8 +1,18 @@
+<script>
+  import { warenkorb } from '$lib/stores/cart.js';
+  
+  // Der '?' Operator sorgt dafür: Wenn warenkorb undefined ist, 
+  // stürzt es nicht ab, sondern gibt 0 zurück.
+  let anzahl = $derived($warenkorb?.length ?? 0);
+</script>
+
 <div class="nav-container">
   <input type="checkbox" id="menu-toggle" class="menu-checkbox" />
-
   <label for="menu-toggle" class="nav-burger-btn">
     ☰
+    {#if anzahl > 0}
+      <span class="cart-badge-burger">{anzahl}</span>
+    {/if}
   </label>
 
   <div class="nav-dropdown-balken">
@@ -11,8 +21,13 @@
     <div class="nav-links-wrapper">
       <a href="/">🏠 Home</a>
       <a href="/restaurants">🍔 Restaurants</a>
-      <a href="/cart">🛒 Warenkorb</a>
-      <a href="/login">👤 Login</a>
+      <a href="/cart" class="cart-link">
+        🛒 Warenkorb
+        {#if anzahl > 0}
+          <span class="cart-badge">{anzahl}</span>
+        {/if}
+      </a>
+      <a href="/account">👤 Account</a>
 
       <div class="nav-impressum">
         <h4>Impressum</h4>
@@ -27,32 +42,29 @@
 </div>
 
 <style>
-  /* Globaler Container, der das Menü rechts fixiert */
   .nav-container {
     position: fixed;
     top: 0;
     right: 0;
     bottom: 0;
-    z-index: 99999; /* Extrem hoch, damit es über allem liegt */
+    z-index: 99999;
   }
 
-  /* Versteckt die Checkbox, die wir für den Klick-Status nutzen */
   .menu-checkbox {
     display: none !important;
   }
 
-  /* BURGER BUTTON (Das weiße Icon, das auf dem Balken sitzt) */
   .nav-burger-btn {
     position: fixed !important;
     top: 20px;
-    right: 4px; /* Sitzt voll auf dem schmalen Balken */
-    width: 40px;  
-    height: 36px; 
-    z-index: 100002; /* Liegt ganz oben */
-    background: transparent !important; 
+    right: 4px;
+    width: 40px;
+    height: 36px;
+    z-index: 100002;
+    background: transparent !important;
     border: none !important;
     cursor: pointer;
-    font-size: 26px; 
+    font-size: 26px;
     color: white !important;
     display: flex !important;
     align-items: center;
@@ -61,55 +73,63 @@
     transition: right 0.3s ease;
   }
 
-  /* DER LILA BALKEN (Die Seitenwand) */
+  .cart-badge-burger {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: #ff3b30;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 2px 5px;
+    border-radius: 10px;
+    font-family: sans-serif;
+  }
+
   .nav-dropdown-balken {
     position: fixed !important;
     top: 0;
     bottom: 0;
-    right: -215px; /* Versteckt die Wand, lässt ca. 25px als Streifen stehen */
-    width: 240px; 
-    height: 100vh; 
-    background: #673ab7 !important; /* Lila */
+    right: -215px;
+    width: 240px;
+    height: 100vh;
+    background: #673ab7 !important;
     z-index: 100000;
     transition: right 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease;
     box-shadow: none;
   }
 
-  /* DIE UMRUNDUNG (Wölbung links neben dem Balken auf Button-Höhe) */
   .button-umrundung {
     position: absolute !important;
-    top: 14px;      
-    left: -18px; /* Klebt dezent am Balken */
-    width: 35px;    
-    height: 48px;   
-    background: #673ab7 !important; 
-    border-radius: 12px 0 0 12px; 
-    z-index: 100001; /* Zwischen Wand und Icon */
+    top: 14px;
+    left: -18px;
+    width: 35px;
+    height: 48px;
+    background: #673ab7 !important;
+    border-radius: 12px 0 0 12px;
+    z-index: 100001;
     transition: opacity 0.2s ease;
   }
 
-  /* WENN DIE CHECKBOX GEKLICKT IST (Menü öffnet sich) */
   .menu-checkbox:checked ~ .nav-dropdown-balken {
-    right: 0 !important; 
-    box-shadow: -8px 0 25px rgba(0, 0, 0, 0.4) !important; 
+    right: 0 !important;
+    box-shadow: -8px 0 25px rgba(0, 0, 0, 0.4) !important;
   }
 
-  /* Blendet die Ausbuchtung aus, wenn die Wand ganz da ist */
   .menu-checkbox:checked ~ .nav-dropdown-balken .button-umrundung {
-    opacity: 0 !important; 
+    opacity: 0 !important;
   }
 
-  /* Das Icon wandert mit der Wand nach links */
   .menu-checkbox:checked ~ .nav-burger-btn {
-    right: 185px !important; 
+    right: 185px !important;
   }
 
-  /* DIE LINKS IM MENÜ (Mit Flexbox für das Impressum) */
   .nav-links-wrapper {
     display: flex !important;
     flex-direction: column !important;
-    height: 100%; /* Füllt die gesamte Höhe des Balkens aus */
-    padding-top: 90px; 
+    height: 100%;
+    padding-top: 90px;
     box-sizing: border-box;
     position: relative;
     z-index: 100003;
@@ -121,7 +141,7 @@
     padding: 15px 25px !important;
     font-size: 18px !important;
     font-family: sans-serif !important;
-    font-weight: 700 !important; 
+    font-weight: 700 !important;
     display: block !important;
     transition: background 0.2s;
     white-space: nowrap;
@@ -131,9 +151,24 @@
     background: rgba(255, 255, 255, 0.15) !important;
   }
 
-  /* Drückt das Impressum automatisch ganz an das untere Ende */
+  .cart-link {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cart-badge {
+    background: white;
+    color: #673ab7;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 12px;
+    line-height: 1.3;
+  }
+
   .nav-impressum {
-    margin-top: auto; 
+    margin-top: auto;
     padding: 25px;
     color: rgba(255, 255, 255, 0.7);
     font-family: sans-serif;
@@ -145,13 +180,12 @@
     margin: 0 0 5px 0;
     color: white;
   }
-  
+
   .nav-impressum p {
     margin: 0;
     line-height: 1.3;
   }
 
-  /* Hauptinhalt der Seite */
   .page-content {
     padding: 20px;
   }
