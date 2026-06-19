@@ -1,9 +1,13 @@
-<script lang="ts">
-	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
-
-	let { children } = $props();
+<script>
+  let open = false;
 </script>
 
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
-{@render children()}
+<button on:click={() => open = !open}>
+  TOGGLE
+</button>
+
+{#if open}
+  <div style="position:fixed; top:0; right:0; width:200px; height:100vh; background:orange;">
+    OPEN
+  </div>
+{/if}
