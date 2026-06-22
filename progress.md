@@ -1,68 +1,125 @@
 # 📋 Fortschritt – Lieferino
 
-Übersicht über alles, was am Frontend neu dazugekommen ist. Sortiert nach Bereich.
-Backend-Themen sind im Code mit großen `🚨`-Hinweisen markiert (dort steht jeweils,
-welcher Endpunkt gebraucht wird).
+Übersicht über alles, was am Frontend dazugekommen ist. Backend-Themen sind im Code
+mit großen `🚨`-Hinweisen markiert (dort steht jeweils, welcher Endpunkt gebraucht wird).
 
 ---
 
-## 🎲 Easter-Egg (global)
-- Liegt in `src/routes/+layout.svelte` und läuft dadurch auf **jeder** Seite.
-- Pro Sekunde ein „Tick", pro Tick eine 1-zu-10000-Chance, dass ein GIF + Sound
-  kurz abgespielt werden.
-- Einstellbar über die Konstanten `TICK_DAUER_MS` und `CHANCE` oben im Script.
+## 👤 Registrierung & Konto
+- **3-Schritt-Registrierung** mit Validierung:
+  - **E-Mail-Verifizierung** per 6-stelligem Code.
+  - **Passwort-Sicherheit**: Live-Stärke-Anzeige + Checkliste, „Weiter" erst ab sicherem Passwort.
+  - **Namens-Check**: Vor-/Nachname min. 2 Buchstaben, keine Zahlen.
+  - **Adress-Check** über OpenStreetMap + **PLZ-Format** (5 Ziffern).
+- **Account-Seite**: Daten bearbeiten, Konto löschen.
 
-## 👤 Registrierung / Login (`src/routes/+page.svelte`)
-- **E-Mail-Verifizierung:** Nach Schritt 1 muss ein 6-stelliger Code eingegeben
-  werden (Service: `src/lib/services/email.js`). Der echte Mailversand kommt später
-  vom Backend.
-- **Passwort-Sicherheit:** Live-Stärke-Anzeige + Checkliste; „Weiter" ist gesperrt,
-  bis das Passwort sicher genug ist (Service: `src/lib/services/passwort.js`).
-- **Adress-Check:** Beim Abschluss wird über OpenStreetMap geprüft, ob die Adresse
-  existiert (Service: `src/lib/services/adresse.js`).
+## 🔐 Login & Sicherheit
+- **Echtes Login mit Session** (`/login`): „Angemeldet bleiben", Session-Timeout,
+  Login-Sperre nach mehreren Fehlversuchen, gebannte Konten werden abgewiesen.
+- **Zwei-Faktor (2FA/MFA)**: per **E-Mail-Code** oder **Authenticator-App (TOTP)**,
+  inkl. **Backup-Codes**.
+- **Passwort vergessen** (`/passwort-vergessen`): Reset per Code.
+- Trennung von **Konto** (bleibt gespeichert) und **Session** (Logout beendet nur die Session).
 
-## 🍽️ Restaurants & Daten
-- **Eine zentrale Datenquelle** für alle Restaurants + Speisekarten unter
-  `src/lib/data` (vorher gab es mehrere getrennte Listen). Die Daten bearbeitet man
-  in `src/lib/data/quelle.js`.
-- **Restaurant-Liste** (`/restaurants`): Suche, Filter nach Küche, Sortierung,
-  Favoriten-Filter.
-- **Detailseite** (`/restaurant/[slug]`): echte Speisekarte, „In den Warenkorb"
-  mit Bestätigung, Favoriten-Herz und **Bewertungen** (Formular + Liste).
+## 🍽️ Restaurants & Speisekarte
+- **Zentrale Datenquelle** unter `src/lib/data` (eine Quelle für alle Seiten).
+- **Restaurant-Liste** (`/restaurants`): Suche, Küchen-Filter, Sortierung,
+  **Favoriten-Filter**, **Vegetarisch-Filter**, Durchschnitts-Bewertung aus Reviews.
+- **Detailseite**: echte Speisekarte mit **Mengen-Auswahl**, **Veggie-Tags & Allergenen**,
+  **Öffnungszeiten** (geöffnet/geschlossen), Favoriten-Herz.
+- **Bewertungen**: nur möglich, wenn man dort **nachweislich bestellt** hat;
+  Bewertung im Kopf ist anklickbar (springt zu den Reviews).
 
 ## 🛒 Warenkorb (`/cart`)
-- Mengen ändern (+/−), Artikel entfernen, Zwischensumme, Liefergebühr, Gesamt.
-- **Mindestbestellwert-Check** (Button zur Kasse erst ab erreichtem Wert).
-- Bleibt nach dem Neuladen erhalten (localStorage).
+- Mengen ändern, entfernen, Zwischensumme/Liefergebühr/Gesamt.
+- **Nach Restaurant gruppiert**, Mindestbestellwert-Check, bleibt nach Neuladen erhalten.
 
 ## 🧾 Checkout (`/checkout`)
-- Lieferadresse (aus den Registrierungsdaten), Zahlungsart-Auswahl, Bestellübersicht.
-- **Gutscheincodes:** `LIEFERINO10` (10 %), `WILLKOMMEN5` (5 €), `GRATIS` (gratis Lieferung).
-- **Voraussichtlicher Liefertermin** wird berechnet.
-- **Live-Lieferstatus** nach der Bestellung: erhalten → wird zubereitet → unterwegs → geliefert.
-- E-Mail-Bestätigung wird angestoßen (echter Versand = Backend).
-
-## ❤️ Favoriten
-- Store: `src/lib/stores/favoriten.js`. Herz-Buttons auf den Karten + „Nur Favoriten"-Filter.
-
-## ⭐ Bewertungen
-- Store: `src/lib/stores/bewertungen.js`. Reviews je Restaurant (Name, Sterne, Text).
+- Lieferadresse + **Karten-Vorschau** der Adresse.
+- **Zahlungsarten**: PayPal, Barzahlung, **Kreditkarte mit Validierung**
+  (Luhn-Prüfung, Ablaufdatum, CVV, Kartentyp-Erkennung).
+- **Trinkgeld** (0/5/10/15 %), **Gutscheincodes** (`LIEFERINO10`, `WILLKOMMEN5`, `GRATIS`).
+- **Bestellnummer**, voraussichtlicher **Liefertermin**, **Live-Lieferstatus**,
+  **Browser-Benachrichtigung** bei Status-Wechsel, E-Mail-Bestätigung.
 
 ## 📦 Bestellverlauf (`/bestellungen`)
-- Liste aller früheren Bestellungen mit „🔁 Nochmal bestellen".
+- Alle früheren Bestellungen mit Bestellnummer, **Detailansicht** und „🔁 Nochmal bestellen".
 
-## 🛠️ Admin (`/admin`)
-- Dashboard mit Kennzahlen (Restaurants, Bestellungen, verkaufte Artikel, Umsatz)
-  und einer Restaurant-Tabelle.
+## 🛠️ Admin (`/admin`) — bleibt auf Deutsch
+- Durch einen **Sicherheitsschlüssel geschützt** (Passwort ist im Code hinterlegt – nicht hier dokumentiert).
+- **Editier-Modus-Schalter** (bleibt während der Sitzung erhalten).
+- **Tabs**:
+  - **Übersicht**: Kennzahlen + **Umsatz-Diagramm** (7 Tage).
+  - **Lieferanten**: Restaurants **aktivieren/deaktivieren** (deaktivierte sind für normale Nutzer unsichtbar).
+  - **Bewertungen**: bearbeiten/löschen.
+  - **Nutzer**: **bannen/entbannen**, **MFA zurücksetzen**.
+
+## 🌍 Mehrsprachigkeit
+- **Sprach-Umschalter** im Menü, Auswahl bleibt gespeichert (`src/lib/i18n.js`).
+- Sprachen: 🇩🇪 Deutsch, 🇬🇧 English, 🇪🇸 Español, 🇷🇺 Русский, 🇯🇵 日本語, 🏛️ Latina,
+  🟪 **Enchanting** (Minecraft-Verzauberungstisch – braucht die Schrift `static/fonts/enchantment.ttf`).
+- Übersetzt sind aktuell Navigation, Startseite und Restaurant-Liste (weitere Seiten folgen).
+- Admin ist bewusst **nicht** übersetzt.
 
 ## 🌙 Dark-/Light-Mode
-- Runder Schalter unten links auf **jeder** Seite (Store: `src/lib/stores/theme.js`).
-- Auswahl bleibt gespeichert; das Farbschema zieht sich über alle Seiten.
+- Runder Schalter unten links auf jeder Seite, Auswahl bleibt gespeichert.
+
+## 🥚 Easter Eggs
+- **Jufalls-Jumpscare**: pro Sekunde 1-zu-10000-Chance auf ein kurzes GIF + Sound (global).
+- **Konami-Code** (↑ ↑ ↓ ↓ ← → ← → B A) → löst den Jumpscare aus.
+- **„Drachenlord"** in die Suche tippen → ein verstecktes Bild fliegt über die Seite,
+  Konfetti, dann verabschiedet sich die Seite.
+- **`pizzapizzapizza`** in die Suche → Konfetti + Geheim-Gutschein `PIZZAPARTY` (25 %).
+- **Geburtstag**: am Geburtstag (laut Konto) → Konfetti + Code `GEBURTSTAG` (20 %).
+- **Hero-Titel 10× klicken** → Konfetti-Überraschung.
 
 ---
 
-## ⚠️ Hinweis fürs Backend-Team
-Favoriten, Bewertungen, Bestellungen und Nutzerdaten liegen aktuell nur lokal im
-Browser (localStorage). Für echte, geräteübergreifende Daten müssen die im Code
-markierten Endpunkte gebaut werden (E-Mail-Versand, Bestellungen, Bewertungen,
-Adress-Proxy, Admin-Verwaltung).
+## 🚨 Wo das Backend weiterarbeiten muss (Checkliste)
+
+Aktuell läuft alles im Frontend (Daten im `localStorage`). Damit es „echt" wird,
+muss das Backend folgende Punkte übernehmen:
+
+### Konten & Login
+- [ ] **Registrierung** speichern: `POST /api/auth/register` (Nutzer in Datenbank).
+- [ ] **Login** serverseitig prüfen: `POST /api/auth/login` (kein Klartext-Vergleich im Browser).
+- [ ] **Passwörter hashen** (z. B. bcrypt) – niemals im Klartext speichern.
+- [ ] **Sessions/Token** serverseitig verwalten (z. B. JWT), inkl. Ablauf.
+- [ ] **Login-Sperre / Rate-Limiting** serverseitig (Frontend-Sperre ist umgehbar).
+
+### E-Mail (Service `src/lib/services/email.js` + Route `src/routes/api/email`)
+- [ ] **Echten Versand** über das Gmail-Konto (App-Passwort in `.env`, siehe `EMAIL-SETUP.md`).
+- [ ] **Verifizierungs-/Reset-Codes** serverseitig erzeugen, senden und prüfen.
+- [ ] **Bestellbestätigung + Liefertermin** per E-Mail verschicken.
+
+### Zwei-Faktor (MFA, `src/lib/services/mfa.js`)
+- [ ] **TOTP-Secret** serverseitig erzeugen + sicher speichern, Codes serverseitig prüfen.
+- [ ] **E-Mail-2FA-Codes** serverseitig.
+- [ ] **Backup-Codes** serverseitig verwalten (Verbrauch zählen).
+
+### Adresse
+- [ ] **Adress-Prüfung** über einen eigenen Endpunkt proxen (statt direkt OpenStreetMap; Rate-Limit).
+
+### Restaurants & Bewertungen
+- [ ] **Restaurant-/Speisekarten-Daten** aus der Datenbank ausliefern.
+- [ ] **Aktiv/Deaktiviert-Status** speichern: `PATCH /api/admin/restaurants/:slug`;
+      normalen Nutzern nur **aktive** Restaurants ausliefern.
+- [ ] **Bewertungen** zentral speichern/laden (`GET/POST /api/bewertungen`) und „nur nach
+      Bestellung" serverseitig erzwingen.
+- [ ] **Favoriten** pro Nutzer serverseitig speichern.
+
+### Bestellungen & Zahlung
+- [ ] **Bestellungen** speichern + ans Restaurant melden: `POST /api/bestellungen`
+      (mit Bestellnummer, Artikeln, Summe, Trinkgeld, Liefertermin).
+- [ ] **Echte Zahlung** über einen Anbieter (z. B. Stripe/PayPal) – Kartendaten NIE
+      selbst speichern/übertragen (nur Token).
+- [ ] **Gutscheincodes** serverseitig prüfen/einlösen (Missbrauch/Mehrfachnutzung verhindern).
+
+### Admin
+- [ ] **Echte Admin-Authentifizierung** statt des Frontend-Schlüssels.
+- [ ] **Geschützte Admin-Endpunkte**: Nutzerliste, Bannen/Entbannen, MFA-Reset,
+      Restaurant-Verwaltung, Bewertungs-Moderation.
+
+### Sonstiges
+- [ ] **Konto löschen** serverseitig umsetzen.
+- [ ] Optional: Bestellverlauf, Treuepunkte usw. an die Datenbank koppeln.

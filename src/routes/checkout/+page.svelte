@@ -48,7 +48,10 @@
   const GUTSCHEINE = {
     LIEFERINO10: { typ: 'prozent', wert: 10, text: '10% Rabatt' },
     WILLKOMMEN5: { typ: 'betrag', wert: 5, text: '5€ Rabatt' },
-    GRATIS: { typ: 'lieferung', wert: 0, text: 'Gratis Lieferung' }
+    GRATIS: { typ: 'lieferung', wert: 0, text: 'Gratis Lieferung' },
+    // 🥚 Versteckte Easter-Egg-Codes (über die Suche zu finden)
+    PIZZAPARTY: { typ: 'prozent', wert: 25, text: '25% Rabatt 🍕' },
+    GEBURTSTAG: { typ: 'prozent', wert: 20, text: '20% Geburtstags-Rabatt 🎂' }
   };
   let gutscheinCode = $state('');
   let aktiverGutschein = $state(null); // der eingelöste Gutschein (oder null)

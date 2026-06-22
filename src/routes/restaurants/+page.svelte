@@ -4,6 +4,20 @@
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen } from '$lib/stores/bewertungen.js';
   import { t } from '$lib/i18n.js';
+  // 🥚 Easter Eggs
+  import { drachenlordAusloesen } from '$lib/stores/easteregg.js';
+  import { konfetti, eierToast } from '$lib/confetti.js';
+
+  // 🥚 Suche überwacht versteckte Codewörter.
+  $effect(() => {
+    const s = suche.toLowerCase().replace(/\s/g, '');
+    if (s === 'drachenlord') {
+      drachenlordAusloesen();
+    } else if (s === 'pizzapizzapizza') {
+      konfetti({ anzahl: 120, dauer: 3000, emojis: ['🍕'] });
+      eierToast('🍕 Geheimcode entdeckt! Nutze PIZZAPARTY für 25% Rabatt 🎉');
+    }
+  });
 
   // Variablen, die sich ändern können, bekommen ein $state().
   let gewaehlterTyp = $state('alle');

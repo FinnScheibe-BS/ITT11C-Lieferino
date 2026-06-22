@@ -17,6 +17,9 @@
   import { dev } from '$app/environment';
   // 🌍 Übersetzungen
   import { t } from '$lib/i18n.js';
+  // 🥚 Easter Eggs
+  import { drachenlordAusloesen } from '$lib/stores/easteregg.js';
+  import { konfetti, eierToast } from '$lib/confetti.js';
 
   // Merkt sich, ob schon ein Konto existiert (dann zeigen wir "Willkommen zurück").
   let kontoVorhanden = $state(false);
@@ -66,10 +69,46 @@
   let plzInput = $state("");
   let ortInput = $state("");
 
+  // 🥚 Hero-Klick-Zähler (10× klicken = Easter Egg)
+  let heroKlicks = $state(0);
+  function heroKlick() {
+    heroKlicks += 1;
+    if (heroKlicks === 10) {
+      heroKlicks = 0;
+      konfetti({ anzahl: 100, dauer: 2500, emojis: ['🍕', '🍔', '🌮', '🍣', '🎉'] });
+      eierToast('🥚 Easter Egg gefunden! Du klickst gerne, was? 😄');
+    }
+  }
+
+  // 🥚 Suche überwacht versteckte Codewörter.
+  $effect(() => {
+    const s = suche.toLowerCase().replace(/\s/g, '');
+    if (s === 'drachenlord') {
+      drachenlordAusloesen(); // 🐉 große Show
+    } else if (s === 'pizzapizzapizza') {
+      konfetti({ anzahl: 120, dauer: 3000, emojis: ['🍕'] });
+      eierToast('🍕 Geheimcode entdeckt! Nutze PIZZAPARTY für 25% Rabatt 🎉');
+    }
+  });
+
   onMount(() => {
     // Anmelde-Status liefert der Auth-Store. Hier merken wir uns nur, ob bereits
     // ein Konto existiert – dann zeigen wir den Login-Hinweis statt der Registrierung.
     kontoVorhanden = hatKonto();
+
+    // 🎂 Geburtstags-Überraschung: Wenn heute Geburtstag ist (laut Konto).
+    const gespeichert = localStorage.getItem('lieferino_user');
+    if (gespeichert) {
+      const user = JSON.parse(gespeichert);
+      if (user.geburtsdatum) {
+        const heute = new Date();
+        const geb = new Date(user.geburtsdatum);
+        if (heute.getDate() === geb.getDate() && heute.getMonth() === geb.getMonth()) {
+          konfetti({ anzahl: 150, dauer: 4000, emojis: ['🎂', '🎈', '🎉', '🥳'] });
+          eierToast('🎂 Alles Gute zum Geburtstag! Code GEBURTSTAG = 20% Rabatt 🥳', 6000);
+        }
+      }
+    }
   });
 
   async function geheZuSchritt2(e) {
@@ -426,9 +465,9 @@
   <!-- 🍔 RESTLICHE STARTSEITE -->
   <div class="welcome-container">
     
-    <!-- 🟪 LILA HERO-QUADRAT 🟪 -->
+    <!-- 🟪 LILA HERO-QUADRAT 🟪 (Titel 10× klicken = verstecktes Egg) -->
     <div class="hero-box">
-      <h1>{$t('home.hero_title')}</h1>
+      <h1 onclick={heroKlick} role="presentation">{$t('home.hero_title')}</h1>
       <p>{$t('home.hero_sub')}</p>
     </div>
 

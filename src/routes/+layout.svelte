@@ -3,6 +3,7 @@
   import { theme, themeWechseln } from '$lib/stores/theme.js';
   import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
   import { onMount, onDestroy } from 'svelte';
+  import Drachenlord from '$lib/Drachenlord.svelte';
 
   // Die Asset-Dateien liegen in src/sets. Vite verwandelt diese Imports
   // automatisch in eine gültige URL, die im Browser geladen werden kann.
@@ -59,16 +60,41 @@
     }, 4000);
   }
 
+  // 🎮 KONAMI-CODE: ↑ ↑ ↓ ↓ ← → ← → B A  → löst den Jumpscare aus.
+  const KONAMI = [
+    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'
+  ];
+  let konamiFortschritt = 0;
+  function konamiTaste(e) {
+    const taste = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (taste === KONAMI[konamiFortschritt]) {
+      konamiFortschritt += 1;
+      if (konamiFortschritt === KONAMI.length) {
+        konamiFortschritt = 0;
+        loeseJumpscareAus(); // 😈 Überraschung!
+      }
+    } else {
+      // Bei falscher Taste von vorne (außer es ist der erste Schritt).
+      konamiFortschritt = taste === KONAMI[0] ? 1 : 0;
+    }
+  }
+
   onMount(() => {
     // Timer starten, sobald die Seite geladen ist.
     tickInterval = setInterval(tick, TICK_DAUER_MS);
+    window.addEventListener('keydown', konamiTaste);
   });
 
   onDestroy(() => {
     // Timer wieder aufräumen, damit er nicht im Hintergrund weiterläuft.
     clearInterval(tickInterval);
+    if (typeof window !== 'undefined') window.removeEventListener('keydown', konamiTaste);
   });
 </script>
+
+<!-- 🐉 Verstecktes „Drachenlord"-Easter-Egg (global) -->
+<Drachenlord />
 
 <!-- 🎲 Overlay des Easter-Eggs. Liegt über allem (z-index sehr hoch). -->
 {#if zeigeJumpscare}
