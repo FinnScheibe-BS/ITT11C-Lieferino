@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { generiereCode, sendeVerifizierungsEmail } from '$lib/services/email.js';
   import { pruefeTotp } from '$lib/services/mfa.js';
-  import { login } from '$lib/stores/auth.js';
+  import { login, loginStatus, registriereFehlversuch } from '$lib/stores/auth.js';
 
   // Ablauf: 'login' (E-Mail+Passwort) -> ggf. 'mfa' (zweiter Faktor) -> fertig.
   let schritt = $state('login');
@@ -12,6 +12,7 @@
   let passwort = $state('');
   let fehler = $state('');
   let zeigePasswort = $state(false); // 👁️ Passwort anzeigen/verstecken
+  let angemeldetBleiben = $state(false); // ✅ Session nicht ablaufen lassen
 
   // Der gespeicherte Nutzer (zum Abgleich).
   let user = $state(null);
@@ -35,12 +36,24 @@
     e.preventDefault();
     fehler = '';
 
+    // 🔒 Erst prüfen, ob der Login gerade wegen zu vieler Fehlversuche gesperrt ist.
+    const status = loginStatus();
+    if (status.gesperrt) {
+      fehler = `Zu viele Fehlversuche. Bitte ${status.restSek} Sekunden warten. ⏳`;
+      return;
+    }
+
     if (!user || user.email !== email.trim()) {
+      registriereFehlversuch();
       fehler = 'Kein Konto mit dieser E-Mail gefunden. 🤔';
       return;
     }
     if (user.passwort !== passwort) {
-      fehler = 'Falsches Passwort. 🔒';
+      registriereFehlversuch();
+      const s = loginStatus();
+      fehler = s.gesperrt
+        ? `Zu viele Fehlversuche. Bitte ${s.restSek} Sekunden warten. ⏳`
+        : 'Falsches Passwort. 🔒';
       return;
     }
 
@@ -72,16 +85,27 @@
       okay = mfaEingabe.trim() === mfaCode;
     }
 
+    // 🆘 Alternativ: ein gültiger Backup-Code (wird danach verbraucht).
+    if (!okay && user.mfa.backupCodes?.length) {
+      const eingabe = mfaEingabe.trim().toUpperCase();
+      const idx = user.mfa.backupCodes.indexOf(eingabe);
+      if (idx !== -1) {
+        user.mfa.backupCodes.splice(idx, 1); // Code verbrauchen
+        localStorage.setItem('lieferino_user', JSON.stringify(user));
+        okay = true;
+      }
+    }
+
     if (okay) {
       einloggenFertig();
     } else {
-      mfaFehler = 'Der Code ist leider falsch. 🔁';
+      mfaFehler = 'Code/Backup-Code ist leider falsch. 🔁';
     }
   }
 
   // Login abschließen: Session über den Auth-Store setzen und zur Startseite.
   function einloggenFertig() {
-    login();
+    login(angemeldetBleiben);
     goto('/');
   }
 </script>
@@ -113,12 +137,17 @@
           </div>
         </div>
 
+        <label class="bleiben">
+          <input type="checkbox" bind:checked={angemeldetBleiben} /> Angemeldet bleiben
+        </label>
+
         {#if fehler}<p class="error-msg">{fehler}</p>{/if}
 
         <button type="submit" class="login-btn">Einloggen ➡️</button>
       </form>
 
       <p class="hinweis">Noch kein Konto? <a href="/">Jetzt registrieren</a></p>
+      <p class="hinweis"><a href="/passwort-vergessen">Passwort vergessen? 🔑</a></p>
 
     {:else if schritt === 'mfa'}
       <!-- 🔐 Zweiter Faktor -->
@@ -167,4 +196,6 @@
   .login-btn:hover { background: #542f95; }
   .hinweis { text-align: center; font-size: 0.9rem; color: #777; margin-top: 16px; }
   .hinweis a { color: #673ab7; font-weight: 600; }
+  .bleiben { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: #555; }
+  .bleiben input { width: auto; }
 </style>

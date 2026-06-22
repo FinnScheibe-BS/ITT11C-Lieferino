@@ -2,12 +2,21 @@
   // 🍽️ Restaurants kommen jetzt aus der zentralen Quelle (siehe $lib/data).
   import { restaurants } from '$lib/data';
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
+  import { bewertungen } from '$lib/stores/bewertungen.js';
 
   // Variablen, die sich ändern können, bekommen ein $state().
   let gewaehlterTyp = $state('alle');
   let sortierung = $state('standard');
   let suche = $state(''); // 🔍 Freitext-Suche nach Name
   let nurFavoriten = $state(false); // ❤️ Nur Favoriten anzeigen?
+  let nurVeg = $state(false); // 🌱 Nur Restaurants mit vegetarischen Gerichten?
+
+  // ⭐ Anzeige-Bewertung: Durchschnitt aus Kundenreviews, sonst Basis-Wert.
+  function anzeigeBewertung(r) {
+    const reviews = $bewertungen[r.slug] || [];
+    if (reviews.length === 0) return r.bewertung;
+    return reviews.reduce((s, b) => s + b.sterne, 0) / reviews.length;
+  }
 
   // $derived berechnet die gefilterte + sortierte Liste automatisch neu,
   // sobald sich Filter, Sortierung, Suchtext oder Favoriten ändern.
@@ -18,8 +27,10 @@
       .filter((r) => r.name.toLowerCase().includes(suche.toLowerCase()))
       // Favoriten-Filter: nur Restaurants, deren Slug in der Favoritenliste steht.
       .filter((r) => !nurFavoriten || $favoriten.includes(r.slug))
+      // Veggie-Filter: nur Restaurants mit mindestens einem vegetarischen Gericht.
+      .filter((r) => !nurVeg || r.speisekarte.some((g) => g.veg))
       .sort((a, b) => {
-        if (sortierung === 'bewertung') return b.bewertung - a.bewertung;
+        if (sortierung === 'bewertung') return anzeigeBewertung(b) - anzeigeBewertung(a);
         if (sortierung === 'minbestell-auf') return a.minBestell - b.minBestell;
         return 0;
       })
@@ -63,6 +74,11 @@
     <button class="fav-filter" class:aktiv={nurFavoriten} onclick={() => (nurFavoriten = !nurFavoriten)}>
       {nurFavoriten ? '❤️ Nur Favoriten' : '🤍 Alle'}
     </button>
+
+    <!-- 🌱 Umschalter: nur mit vegetarischen Gerichten -->
+    <button class="fav-filter veg" class:aktiv={nurVeg} onclick={() => (nurVeg = !nurVeg)}>
+      🌱 Vegetarisch
+    </button>
   </div>
 
   <!-- Treffer-Anzahl -->
@@ -73,7 +89,7 @@
       <a href="/restaurant/{r.slug}" class="karte">
         <div class="emoji-bild">
           <span class="emoji-gross">{r.emoji}</span>
-          <span class="rating-badge">⭐ {r.bewertung}</span>
+          <span class="rating-badge">⭐ {anzeigeBewertung(r).toFixed(1)}</span>
           <!-- ❤️ Favoriten-Herz oben links -->
           <button class="herz" onclick={(e) => herzKlick(e, r.slug)} aria-label="Favorit">
             {$favoriten.includes(r.slug) ? '❤️' : '🤍'}
@@ -106,6 +122,7 @@
   .filter-bar input, .filter-bar select { padding: 11px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; }
   .fav-filter { padding: 11px 16px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; font-size: 0.95rem; }
   .fav-filter.aktiv { border-color: #e0245e; background: #fff0f5; }
+  .fav-filter.veg.aktiv { border-color: #2e7d32; background: #e8f5e9; }
   .herz { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.85); border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 1.1rem; cursor: pointer; }
 
   .treffer { color: #777; font-size: 0.9rem; margin: 0 0 16px; }

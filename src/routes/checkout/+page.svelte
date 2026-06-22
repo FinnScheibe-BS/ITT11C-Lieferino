@@ -2,14 +2,43 @@
   import { onMount, onDestroy } from 'svelte';
   import { warenkorb, gesamtSumme, leereWarenkorb } from '$lib/stores/cart.js';
   import { sendeBestellBestaetigung } from '$lib/services/email.js';
+  import { pruefeKarte, kartenTyp, formatiereNummer } from '$lib/services/payment.js';
 
   const LIEFERGEBUEHR = 2.49;
 
   // Zahlungsart-Auswahl
   let zahlungsart = $state('paypal');
 
+  // 💳 Kreditkarten-Eingaben
+  let kartennummer = $state('');
+  let kartenAblauf = $state('');
+  let kartenCvv = $state('');
+  let kartePruefung = $state(null); // Ergebnis der letzten Prüfung (oder null)
+
+  // Live-Kartentyp (Visa/Mastercard/…) für die Anzeige.
+  let aktKartenTyp = $derived(kartennummer ? kartenTyp(kartennummer) : '');
+
+  // Formatiert die Nummer beim Tippen in 4er-Blöcke.
+  function nummerEingabe(e) {
+    kartennummer = formatiereNummer(e.target.value);
+    kartePruefung = null; // alte Fehlermeldung zurücksetzen
+  }
+
+  // 💶 Trinkgeld (in Prozent der Zwischensumme).
+  let trinkgeldProzent = $state(0);
+  let trinkgeld = $derived(($gesamtSumme * trinkgeldProzent) / 100);
+
   // Lieferadresse + E-Mail laden wir aus den gespeicherten Nutzerdaten.
   let user = $state(null);
+
+  // 🗺️ Karten-Vorschau der Lieferadresse (eingebettete Karte).
+  let kartenUrl = $derived(
+    user
+      ? `https://maps.google.com/maps?q=${encodeURIComponent(
+          `${user.strasse} ${user.hausnummer}, ${user.plz} ${user.ort}`
+        )}&z=15&output=embed`
+      : ''
+  );
 
   // Nach dem Abschicken zeigen wir eine Erfolgsmeldung statt des Formulars.
   let bestellt = $state(false);
@@ -47,8 +76,11 @@
     return 0;
   });
 
-  // Endsumme = Zwischensumme − Rabatt + Lieferkosten (nie unter 0).
-  let endsumme = $derived(Math.max(0, $gesamtSumme - rabatt + lieferkosten));
+  // Endsumme = Zwischensumme − Rabatt + Lieferkosten + Trinkgeld (nie unter 0).
+  let endsumme = $derived(Math.max(0, $gesamtSumme - rabatt + lieferkosten + trinkgeld));
+
+  // Eindeutige Bestellnummer (wird beim Abschicken erzeugt).
+  let bestellnummer = $state('');
 
   // 🚚 LIVE-LIEFERSTATUS: Die Bestellung durchläuft mehrere Phasen.
   const STATUS_PHASEN = ['Bestellung erhalten', 'Wird zubereitet', 'Unterwegs', 'Geliefert'];
@@ -62,12 +94,21 @@
 
   onDestroy(() => clearInterval(statusTimer));
 
-  // Lässt den Status alle 3 Sekunden eine Phase weiterspringen.
+  // 🔔 Zeigt eine Browser-Benachrichtigung (falls der Nutzer erlaubt hat).
+  function benachrichtige(text) {
+    if (typeof Notification === 'undefined') return; // Browser kann das nicht
+    if (Notification.permission === 'granted') {
+      new Notification('Lieferino 🛵', { body: text });
+    }
+  }
+
+  // Lässt den Status alle 3 Sekunden eine Phase weiterspringen + benachrichtigt.
   function starteLieferstatus() {
     statusIndex = 0;
     statusTimer = setInterval(() => {
       if (statusIndex < STATUS_PHASEN.length - 1) {
         statusIndex += 1;
+        benachrichtige(`Status: ${STATUS_PHASEN[statusIndex]}`); // 🔔 bei jedem Wechsel
       } else {
         clearInterval(statusTimer);
       }
@@ -83,18 +124,35 @@
   }
 
   async function bestellungAbschicken() {
+    // 💳 Wenn mit Kreditkarte bezahlt wird, zuerst die Karte prüfen.
+    if (zahlungsart === 'karte') {
+      kartePruefung = pruefeKarte({ nummer: kartennummer, ablauf: kartenAblauf, cvv: kartenCvv });
+      if (!kartePruefung.gueltig) {
+        return; // Fehler werden im Formular angezeigt – nicht weiter.
+      }
+    }
+
     liefertermin = berechneLiefertermin();
+
+    // Bestellnummer erzeugen, z.B. "LF-7F3A9C".
+    bestellnummer =
+      'LF-' + Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase().padStart(6, '0');
 
     // 🚨 BACKEND-HINWEIS: Diese Bestellung wird aktuell NICHT an einen Server
     // geschickt, sondern nur lokal verarbeitet. Das Backend muss hier später
     // einen Endpunkt anbieten, z.B.  POST /api/bestellungen
-    //   Body: { kunde, artikel, summe, zahlungsart, liefertermin }
+    //   Body: { nummer, kunde, artikel, summe, zahlungsart, trinkgeld, liefertermin }
     // der die Bestellung in der Datenbank speichert und ans Restaurant meldet.
+    // 🚨 Die KARTENDATEN dürfen dabei NIEMALS mitgespeichert/gesendet werden –
+    //     echte Zahlung läuft über einen Anbieter (siehe payment.js).
 
     // Bestellung in den lokalen Bestellverlauf legen (für die Verlauf-Seite).
     const bestellung = {
+      nummer: bestellnummer,
       datum: new Date().toISOString(),
       artikel: $warenkorb,
+      zwischensumme: $gesamtSumme,
+      trinkgeld,
       summe: endsumme,
       gutschein: aktiverGutschein?.code || null,
       zahlungsart,
@@ -109,6 +167,11 @@
       await sendeBestellBestaetigung(user.email, bestellung, liefertermin);
     }
 
+    // 🔔 Um Liefer-Benachrichtigungen bitten (falls noch nicht entschieden).
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
     leereWarenkorb();
     bestellt = true;
     starteLieferstatus(); // 🚚 Live-Status starten
@@ -121,6 +184,7 @@
     <div class="erfolg">
       <h1>🎉 Bestellung erfolgreich!</h1>
       <p>Vielen Dank für deine Bestellung bei Lieferino.</p>
+      <p class="bestellnr">Bestellnummer: <strong>{bestellnummer}</strong></p>
       <p class="liefertermin">🚚 Voraussichtliche Lieferung bis <strong>{liefertermin} Uhr</strong></p>
 
       <!-- 🚚 LIVE-LIEFERSTATUS: zeigt die aktuelle Phase an -->
@@ -158,6 +222,8 @@
           {user.strasse} {user.hausnummer}<br />
           {user.plz} {user.ort}
         </p>
+        <!-- 🗺️ Karten-Vorschau der Lieferadresse -->
+        <iframe class="karte-vorschau" src={kartenUrl} title="Lieferadresse auf der Karte" loading="lazy"></iframe>
       {:else}
         <p class="warnung">⚠️ Keine Adresse gefunden. Bitte zuerst registrieren.</p>
       {/if}
@@ -177,6 +243,50 @@
           <input type="radio" bind:group={zahlungsart} value="bar" /> 💶 Barzahlung
         </label>
       </div>
+
+      <!-- 💳 Kreditkarten-Formular (nur bei Auswahl "Kreditkarte") -->
+      {#if zahlungsart === 'karte'}
+        <div class="karte-formular">
+          <div class="kf-feld">
+            <label for="kn">Kartennummer {#if aktKartenTyp && aktKartenTyp !== 'Unbekannt'}<span class="kartentyp">{aktKartenTyp}</span>{/if}</label>
+            <input id="kn" type="text" inputmode="numeric" maxlength="23" placeholder="1234 5678 9012 3456" value={kartennummer} oninput={nummerEingabe} />
+            {#if kartePruefung?.fehler.nummer}<span class="kf-fehler">Ungültige Kartennummer</span>{/if}
+          </div>
+          <div class="kf-row">
+            <div class="kf-feld">
+              <label for="ka">Gültig bis (MM/JJ)</label>
+              <input id="ka" type="text" maxlength="5" placeholder="07/27" bind:value={kartenAblauf} />
+              {#if kartePruefung?.fehler.ablauf}<span class="kf-fehler">Ungültig / abgelaufen</span>{/if}
+            </div>
+            <div class="kf-feld">
+              <label for="cv">CVV</label>
+              <input id="cv" type="text" inputmode="numeric" maxlength="4" placeholder="123" bind:value={kartenCvv} />
+              {#if kartePruefung?.fehler.cvv}<span class="kf-fehler">Ungültig</span>{/if}
+            </div>
+          </div>
+          <p class="kf-hinweis">🔒 Testkarte: 4242 4242 4242 4242, beliebiges zukünftiges Datum + 3 Ziffern.</p>
+        </div>
+      {/if}
+    </section>
+
+    <!-- 💶 Trinkgeld -->
+    <section class="block">
+      <h2>Trinkgeld für den Fahrer 🚴</h2>
+      <div class="trinkgeld-optionen">
+        {#each [0, 5, 10, 15] as prozent}
+          <button
+            type="button"
+            class="tg-btn"
+            class:aktiv={trinkgeldProzent === prozent}
+            onclick={() => (trinkgeldProzent = prozent)}
+          >
+            {prozent === 0 ? 'Kein' : prozent + '%'}
+          </button>
+        {/each}
+      </div>
+      {#if trinkgeld > 0}
+        <p class="tg-info">+ {trinkgeld.toFixed(2)}€ Trinkgeld – danke! 💜</p>
+      {/if}
     </section>
 
     <!-- 🎟️ Gutscheincode -->
@@ -218,6 +328,12 @@
         <span>Liefergebühr</span>
         <span>{lieferkosten === 0 ? 'Gratis 🎉' : lieferkosten.toFixed(2) + '€'}</span>
       </div>
+      {#if trinkgeld > 0}
+        <div class="uebersicht-zeile">
+          <span>Trinkgeld ({trinkgeldProzent}%)</span>
+          <span>{trinkgeld.toFixed(2)}€</span>
+        </div>
+      {/if}
       <div class="uebersicht-zeile gesamt">
         <span>Gesamt</span>
         <span>{endsumme.toFixed(2)}€</span>
@@ -245,10 +361,30 @@
   .uebersicht-zeile.gesamt { font-weight: bold; color: #222; border-top: 1px solid #ddd; padding-top: 10px; font-size: 1.15rem; }
 
   .warnung { color: #d97706; font-weight: 600; }
+  .karte-vorschau { width: 100%; height: 200px; border: 0; border-radius: 12px; margin-top: 10px; }
 
   .btn { display: inline-block; background: #673ab7; color: white; text-decoration: none; padding: 14px 22px; border-radius: 12px; font-weight: bold; border: none; cursor: pointer; font-size: 1rem; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .voll { width: 100%; }
+
+  /* 💳 Kreditkarten-Formular */
+  .karte-formular { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .kf-row { display: flex; gap: 12px; }
+  .kf-feld { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .kf-feld label { font-size: 0.82rem; font-weight: 600; color: #444; }
+  .kf-feld input { padding: 11px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; }
+  .kartentyp { background: #673ab7; color: white; padding: 1px 8px; border-radius: 10px; font-size: 0.72rem; margin-left: 6px; }
+  .kf-fehler { color: #dc3545; font-size: 0.8rem; font-weight: 600; }
+  .kf-hinweis { font-size: 0.78rem; color: #999; margin: 0; }
+
+  /* 💶 Trinkgeld */
+  .trinkgeld-optionen { display: flex; gap: 10px; }
+  .tg-btn { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 12px; background: white; cursor: pointer; font-weight: 600; }
+  .tg-btn.aktiv { border-color: #673ab7; background: #faf7ff; color: #673ab7; }
+  .tg-info { color: #34c759; font-weight: 600; margin: 10px 0 0; font-size: 0.9rem; }
+
+  .bestellnr { font-size: 1rem; color: #555; margin: 4px 0; }
+  .bestellnr strong { color: #673ab7; letter-spacing: 1px; }
 
   .erfolg, .leer { text-align: center; padding: 40px 20px; }
   .erfolg .liefertermin { font-size: 1.1rem; margin: 16px 0; }

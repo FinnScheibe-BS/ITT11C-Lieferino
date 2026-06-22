@@ -140,6 +140,12 @@
   async function registrationAbschliessen(e) {
     e.preventDefault();
 
+    // PLZ-Format prüfen: in Deutschland genau 5 Ziffern.
+    if (!/^\d{5}$/.test(plzInput.trim())) {
+      adressFehler = "Die PLZ muss aus genau 5 Ziffern bestehen. 🔢";
+      return;
+    }
+
     // 🏠 Bevor wir die Registrierung abschließen, prüfen wir online, ob die
     // eingegebene Adresse überhaupt existiert.
     adressFehler = "";
@@ -177,14 +183,16 @@
 
   // 🍽️ Restaurants kommen jetzt aus der zentralen Quelle (siehe $lib/data)
 
-  let gewaehlterTyp = $state("alle"); 
-  let maxMinBestellwert = $state(30); 
+  let gewaehlterTyp = $state("alle");
+  let maxMinBestellwert = $state(30);
+  let suche = $state(""); // 🔍 Suche auf der Startseite
 
   let gefilterteRestaurants = $derived(
     restaurants.filter(r => {
       let typPasst = gewaehlterTyp === "alle" || r.typ === gewaehlterTyp;
       let preisPasst = r.minBestell <= maxMinBestellwert;
-      return typPasst && preisPasst;
+      let suchePasst = r.name.toLowerCase().includes(suche.toLowerCase());
+      return typPasst && preisPasst && suchePasst;
     })
   );
 
@@ -388,6 +396,12 @@
       <p>Dein Lieblingsessen, nur wenige Klicks entfernt 🍕</p>
     </div>
 
+    <!-- 🔍 Suchleiste -->
+    <div class="filter-group" style="margin-bottom: 16px;">
+      <label for="suche">Suche:</label>
+      <input id="suche" type="search" placeholder="🔍 Restaurant suchen…" bind:value={suche} class="such-input" />
+    </div>
+
     <!-- Filter-Bar -->
     <div class="filter-bar">
       <div class="filter-group">
@@ -505,6 +519,7 @@
   .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .login-hinweis { text-align: center; font-size: 0.9rem; color: #777; margin-top: 14px; }
   .login-hinweis a { color: #673ab7; font-weight: 600; }
+  .such-input { padding: 11px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; width: 100%; box-sizing: border-box; }
 
   .button-row { display: flex; gap: 12px; margin-top: 15px; }
   .back-btn { padding: 14px; background: #f1f1f1; color: #333; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }

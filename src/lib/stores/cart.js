@@ -25,18 +25,19 @@ if (browser) {
   });
 }
 
-// 📦 Fügt ein Gericht hinzu. Ist es schon drin, erhöhen wir nur die Menge.
-export function zumWarenkorb(gericht, restaurantName) {
+// 📦 Fügt ein Gericht hinzu (Standard-Menge 1, optional mehr auf einmal).
+// Ist es schon drin, erhöhen wir nur die Menge.
+export function zumWarenkorb(gericht, restaurantName, menge = 1) {
   warenkorb.update((inhalt) => {
     // Wir erkennen ein gleiches Gericht am Namen + Restaurant.
     const vorhanden = inhalt.find(
       (i) => i.name === gericht.name && i.restaurant === restaurantName
     );
     if (vorhanden) {
-      vorhanden.menge += 1;
+      vorhanden.menge += menge;
       return [...inhalt];
     }
-    return [...inhalt, { ...gericht, menge: 1, restaurant: restaurantName }];
+    return [...inhalt, { ...gericht, menge, restaurant: restaurantName }];
   });
 }
 

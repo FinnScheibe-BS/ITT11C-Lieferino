@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   // 🔐 MFA-Funktionen
-  import { generiereSecret, otpauthUri, pruefeTotp } from '$lib/services/mfa.js';
+  import { generiereSecret, otpauthUri, pruefeTotp, generiereBackupCodes } from '$lib/services/mfa.js';
   import { eingeloggt, logout } from '$lib/stores/auth.js';
 
   let user = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
@@ -60,15 +60,39 @@
     window.location.href = "/";
   }
 
+  // 🗑️ Konto löschen (zweistufig, damit es nicht aus Versehen passiert).
+  let loeschBestaetigung = $state(false);
+  function kontoLoeschen() {
+    localStorage.removeItem('lieferino_user');
+    localStorage.removeItem('lieferino_session');
+    localStorage.removeItem('lieferino_bestellungen');
+    localStorage.removeItem('lieferino_favoriten');
+    logout();
+    window.location.href = '/';
+  }
+
   // 🔐 Speichert den (geänderten) Nutzer zurück in den localStorage.
   function speichereUser() {
     localStorage.setItem('lieferino_user', JSON.stringify(user));
   }
 
+  // Zeigt die frisch erzeugten Backup-Codes einmalig an.
+  let neueBackupCodes = $state([]);
+
   // 📧 E-Mail-2FA direkt aktivieren (die E-Mail wurde bei der Registrierung
   // bereits verifiziert, daher reicht hier ein Klick).
   function aktiviereEmail2fa() {
-    user.mfa = { aktiv: true, methode: 'email' };
+    const codes = generiereBackupCodes();
+    user.mfa = { aktiv: true, methode: 'email', backupCodes: codes };
+    neueBackupCodes = codes;
+    speichereUser();
+  }
+
+  // Erzeugt neue Backup-Codes (alte werden ungültig).
+  function backupCodesNeu() {
+    const codes = generiereBackupCodes();
+    user.mfa = { ...user.mfa, backupCodes: codes };
+    neueBackupCodes = codes;
     speichereUser();
   }
 
@@ -85,7 +109,9 @@
   async function totpBestaetigen() {
     const okay = await pruefeTotp(totpSecret, totpEingabe);
     if (okay) {
-      user.mfa = { aktiv: true, methode: 'totp', secret: totpSecret };
+      const codes = generiereBackupCodes();
+      user.mfa = { aktiv: true, methode: 'totp', secret: totpSecret, backupCodes: codes };
+      neueBackupCodes = codes;
       speichereUser();
       zeigeTotpEinrichtung = false;
       totpFehler = '';
@@ -97,6 +123,7 @@
   // 🔓 2FA wieder ausschalten.
   function deaktiviereMfa() {
     user.mfa = { aktiv: false };
+    neueBackupCodes = [];
     speichereUser();
     zeigeTotpEinrichtung = false;
   }
@@ -240,7 +267,24 @@
           <p class="mfa-status an">
             ✅ Aktiv – Methode: {user.mfa.methode === 'totp' ? 'Authenticator-App' : 'E-Mail-Code'}
           </p>
-          <button onclick={deaktiviereMfa} class="mfa-btn aus">2FA deaktivieren</button>
+
+          <!-- 🆘 Frisch erzeugte Backup-Codes (nur einmalig anzeigen) -->
+          {#if neueBackupCodes.length > 0}
+            <div class="backup-box">
+              <p class="backup-titel">🆘 Deine Backup-Codes – jetzt notieren!</p>
+              <p class="mfa-mini">Jeder Code funktioniert einmal, falls du keinen Zugriff auf deinen zweiten Faktor hast.</p>
+              <div class="backup-codes">
+                {#each neueBackupCodes as code}<code>{code}</code>{/each}
+              </div>
+            </div>
+          {:else}
+            <p class="mfa-info">🆘 Noch {user.mfa.backupCodes?.length ?? 0} Backup-Codes übrig.</p>
+          {/if}
+
+          <div class="mfa-btn-row">
+            <button onclick={backupCodesNeu} class="mfa-btn grau">Neue Backup-Codes</button>
+            <button onclick={deaktiviereMfa} class="mfa-btn aus">2FA deaktivieren</button>
+          </div>
         {:else if zeigeTotpEinrichtung}
           <!-- Authenticator-Einrichtung -->
           <p class="mfa-info">1. Füge dieses Konto in deiner Authenticator-App hinzu:</p>
@@ -271,6 +315,19 @@
       </div>
 
       <button onclick={ausloggen} class="logout-btn">🔴 Ausloggen</button>
+
+      <!-- 🗑️ Konto löschen (Gefahrenzone) -->
+      {#if !loeschBestaetigung}
+        <button onclick={() => (loeschBestaetigung = true)} class="delete-btn">🗑️ Konto löschen</button>
+      {:else}
+        <div class="delete-confirm">
+          <p>Wirklich löschen? Alle deine Daten (Konto, Bestellungen, Favoriten) gehen verloren.</p>
+          <div class="delete-row">
+            <button onclick={() => (loeschBestaetigung = false)} class="mfa-btn grau">Abbrechen</button>
+            <button onclick={kontoLoeschen} class="delete-btn endgueltig">Endgültig löschen</button>
+          </div>
+        </div>
+      {/if}
     </div>
   {:else}
     <div class="no-user">
@@ -339,6 +396,18 @@
   .totp-secret { background: #faf7ff; border: 1px dashed #b39ddb; border-radius: 10px; padding: 10px; margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
   .totp-secret code { font-size: 1.2rem; letter-spacing: 2px; color: #673ab7; font-weight: bold; }
   .totp-uri { display: block; word-break: break-all; background: #f5f5f5; padding: 8px; border-radius: 8px; font-size: 0.75rem; color: #555; }
+  .backup-box { background: #fff8e1; border: 1px dashed #ffc107; border-radius: 12px; padding: 12px; margin: 8px 0; }
+  .backup-titel { font-weight: bold; color: #8a6d00; margin: 0 0 4px; }
+  .backup-codes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
+  .backup-codes code { background: #fff; border: 1px solid #eee; border-radius: 6px; padding: 6px; text-align: center; font-weight: bold; letter-spacing: 1px; color: #673ab7; }
+
+  /* 🗑️ Konto löschen */
+  .delete-btn { padding: 12px; background: none; color: #999; border: 1px solid #ddd; border-radius: 12px; font-weight: 600; cursor: pointer; }
+  .delete-btn:hover { color: #dc3545; border-color: #dc3545; }
+  .delete-btn.endgueltig { flex: 1; background: #dc3545; color: white; border: none; }
+  .delete-confirm { background: #fff5f5; border: 1px solid #f5c6cb; border-radius: 12px; padding: 16px; }
+  .delete-confirm p { color: #842029; font-size: 0.9rem; margin: 0 0 12px; }
+  .delete-row { display: flex; gap: 10px; }
 
   .no-user { padding: 40px; background: #f9f9f9; border-radius: 12px; text-align: center; }
   .login-redirect-btn { display: inline-block; margin-top: 15px; padding: 10px 20px; background: #673ab7; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; }

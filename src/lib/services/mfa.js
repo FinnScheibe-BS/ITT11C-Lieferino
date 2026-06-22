@@ -20,6 +20,21 @@ export function generiereSecret() {
   return secret;
 }
 
+// 🆘 Erzeugt Backup-Codes (Format "A1B2-C3D4"), falls die App verloren geht.
+// Jeder Code ist nur EINMAL gültig.
+export function generiereBackupCodes(anzahl = 6) {
+  const codes = [];
+  for (let i = 0; i < anzahl; i++) {
+    const bytes = crypto.getRandomValues(new Uint8Array(4));
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase();
+    codes.push(`${hex.slice(0, 4)}-${hex.slice(4, 8)}`);
+  }
+  return codes;
+}
+
 // 📲 Baut die "otpauth://"-Adresse, die eine Authenticator-App versteht.
 // Daraus kann die App (oder ein QR-Code) das Konto einrichten.
 export function otpauthUri(secret, email) {

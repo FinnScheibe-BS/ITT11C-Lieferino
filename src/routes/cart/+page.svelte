@@ -18,6 +18,18 @@
 
   // Ist der Mindestbestellwert erreicht?
   let mindestErreicht = $derived($gesamtSumme >= mindestbestellwert);
+
+  // 🍽️ Artikel nach Restaurant gruppieren. Wir merken uns den Original-Index
+  // jedes Artikels, damit Mengen-Änderung/Entfernen weiter funktioniert.
+  let gruppen = $derived.by(() => {
+    const map = {};
+    $warenkorb.forEach((artikel, index) => {
+      const key = artikel.restaurant || 'Sonstiges';
+      if (!map[key]) map[key] = [];
+      map[key].push({ artikel, index });
+    });
+    return Object.entries(map); // [ [restaurantName, [{artikel,index}, ...]], ... ]
+  });
 </script>
 
 <div class="seite">
@@ -30,29 +42,34 @@
       <a href="/restaurants" class="btn">Jetzt Restaurants entdecken</a>
     </div>
   {:else}
-    <div class="liste">
-      {#each $warenkorb as artikel, index}
-        <div class="zeile">
-          <div class="info">
-            <h3>{artikel.name}</h3>
-            <p class="herkunft">von {artikel.restaurant}</p>
-            <span class="preis">{artikel.preis.toFixed(2)}€</span>
-          </div>
+    <!-- Nach Restaurant gruppiert -->
+    {#each gruppen as [restaurantName, eintraege]}
+      <div class="gruppe">
+        <h2 class="gruppe-titel">🍽️ {restaurantName}</h2>
+        <div class="liste">
+          {#each eintraege as { artikel, index }}
+            <div class="zeile">
+              <div class="info">
+                <h3>{artikel.name}</h3>
+                <span class="preis">{artikel.preis.toFixed(2)}€</span>
+              </div>
 
-          <!-- Mengen-Steuerung: - [Anzahl] + -->
-          <div class="menge">
-            <button onclick={() => aendereMenge(index, -1)} aria-label="Weniger">−</button>
-            <span>{artikel.menge}</span>
-            <button onclick={() => aendereMenge(index, 1)} aria-label="Mehr">+</button>
-          </div>
+              <!-- Mengen-Steuerung: - [Anzahl] + -->
+              <div class="menge">
+                <button onclick={() => aendereMenge(index, -1)} aria-label="Weniger">−</button>
+                <span>{artikel.menge}</span>
+                <button onclick={() => aendereMenge(index, 1)} aria-label="Mehr">+</button>
+              </div>
 
-          <!-- Zwischensumme pro Artikel (Preis × Menge) -->
-          <div class="zwischensumme">{(artikel.preis * artikel.menge).toFixed(2)}€</div>
+              <!-- Zwischensumme pro Artikel (Preis × Menge) -->
+              <div class="zwischensumme">{(artikel.preis * artikel.menge).toFixed(2)}€</div>
 
-          <button class="loeschen" onclick={() => entferneArtikel(index)} aria-label="Entfernen">🗑️</button>
+              <button class="loeschen" onclick={() => entferneArtikel(index)} aria-label="Entfernen">🗑️</button>
+            </div>
+          {/each}
         </div>
-      {/each}
-    </div>
+      </div>
+    {/each}
 
     <!-- Zusammenfassung -->
     <div class="zusammenfassung">
@@ -96,6 +113,8 @@
 
   .leer { text-align: center; padding: 40px; color: #777; }
 
+  .gruppe { margin-bottom: 18px; }
+  .gruppe-titel { font-size: 1.05rem; margin: 0 0 8px; color: #673ab7; }
   .liste { display: flex; flex-direction: column; gap: 10px; }
   .zeile { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 16px; background: white; border: 1px solid #eee; border-radius: 14px; padding: 14px; }
   .info h3 { margin: 0 0 2px; }

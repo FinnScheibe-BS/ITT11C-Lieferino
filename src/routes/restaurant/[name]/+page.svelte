@@ -12,6 +12,34 @@
   // Reviews dieses Restaurants aus dem Store ziehen.
   let reviews = $derived($bewertungen[slug] || []);
 
+  // ⭐ Durchschnittsbewertung aus den Kundenreviews (sonst Basis-Bewertung).
+  let durchschnitt = $derived.by(() => {
+    if (reviews.length === 0) return restaurant?.bewertung ?? 0;
+    const summe = reviews.reduce((s, r) => s + r.sterne, 0);
+    return summe / reviews.length;
+  });
+
+  // 🕒 Ist das Restaurant gerade geöffnet? Vergleich der aktuellen Uhrzeit
+  // mit oeffnetUm/schliesstUm (Format "HH:MM").
+  let geoeffnet = $derived.by(() => {
+    if (!restaurant?.oeffnetUm) return true;
+    const jetzt = new Date();
+    const minutenJetzt = jetzt.getHours() * 60 + jetzt.getMinutes();
+    const [oh, om] = restaurant.oeffnetUm.split(':').map(Number);
+    const [sh, sm] = restaurant.schliesstUm.split(':').map(Number);
+    return minutenJetzt >= oh * 60 + om && minutenJetzt < sh * 60 + sm;
+  });
+
+  // Mengen-Auswahl pro Gericht (Standard 1).
+  let mengen = $state({});
+  function menge(id) {
+    return mengen[id] ?? 1;
+  }
+  function aendere(id, delta) {
+    const neu = Math.max(1, menge(id) + delta);
+    mengen = { ...mengen, [id]: neu };
+  }
+
   // Eingabefelder für eine neue Bewertung.
   let neuName = $state('');
   let neuSterne = $state(5);
@@ -32,8 +60,10 @@
   let hinweisTimer;
 
   function hinzufuegen(gericht) {
-    zumWarenkorb(gericht, restaurant.name);
-    hinweis = `${gericht.name} wurde hinzugefügt ✅`;
+    const anzahl = menge(gericht.id);
+    zumWarenkorb(gericht, restaurant.name, anzahl);
+    hinweis = `${anzahl}× ${gericht.name} hinzugefügt ✅`;
+    mengen = { ...mengen, [gericht.id]: 1 }; // Menge zurücksetzen
     // Alten Timer löschen, damit sich die Meldungen nicht überlagern.
     clearTimeout(hinweisTimer);
     hinweisTimer = setTimeout(() => (hinweis = ''), 2000);
@@ -56,7 +86,15 @@
           </button>
         </h1>
         <p class="meta">
-          ⭐ {restaurant.bewertung} · ⏱️ {restaurant.lieferzeit} · Mindestbestellwert {restaurant.minBestell}€
+          ⭐ {durchschnitt.toFixed(1)} ({reviews.length} Bewertungen) · ⏱️ {restaurant.lieferzeit} · Min. {restaurant.minBestell}€
+        </p>
+        <p class="oeffnung">
+          {#if geoeffnet}
+            <span class="status auf">🟢 Jetzt geöffnet</span>
+          {:else}
+            <span class="status zu">🔴 Geschlossen</span>
+          {/if}
+          <span class="zeiten">({restaurant.oeffnetUm}–{restaurant.schliesstUm} Uhr)</span>
         </p>
         <p class="beschreibung">{restaurant.beschreibung}</p>
       </div>
@@ -67,11 +105,25 @@
       {#each restaurant.speisekarte as gericht}
         <div class="gericht">
           <div class="gericht-info">
-            <h3>{gericht.name}</h3>
+            <h3>
+              {gericht.name}
+              {#if gericht.veg}<span class="veg-tag">🌱 vegetarisch</span>{/if}
+            </h3>
             <p class="gericht-desc">{gericht.beschreibung}</p>
+            {#if gericht.allergene && gericht.allergene.length > 0}
+              <p class="allergene">Enthält: {gericht.allergene.join(', ')}</p>
+            {/if}
             <span class="preis">{gericht.preis.toFixed(2)}€</span>
           </div>
-          <button class="add-btn" onclick={() => hinzufuegen(gericht)}>+ Hinzufügen</button>
+          <div class="gericht-aktion">
+            <!-- Mengen-Stepper -->
+            <div class="stepper">
+              <button onclick={() => aendere(gericht.id, -1)} aria-label="Weniger">−</button>
+              <span>{menge(gericht.id)}</span>
+              <button onclick={() => aendere(gericht.id, 1)} aria-label="Mehr">+</button>
+            </div>
+            <button class="add-btn" onclick={() => hinzufuegen(gericht)}>+ Hinzufügen</button>
+          </div>
         </div>
       {/each}
     </div>
@@ -140,6 +192,23 @@
   .preis { font-weight: bold; color: #673ab7; }
   .add-btn { background: #673ab7; color: white; border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; cursor: pointer; white-space: nowrap; }
   .add-btn:hover { background: #5a2da3; }
+
+  /* Öffnungsstatus */
+  .oeffnung { margin: 4px 0; font-size: 0.9rem; }
+  .status { font-weight: 700; }
+  .status.auf { color: #2e9e4f; }
+  .status.zu { color: #dc3545; }
+  .zeiten { color: #888; font-size: 0.82rem; }
+
+  /* Veggie-Tag + Allergene */
+  .veg-tag { background: #e8f5e9; color: #2e7d32; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; margin-left: 6px; vertical-align: middle; }
+  .allergene { color: #999; font-size: 0.78rem; margin: 0 0 6px; }
+
+  /* Mengen-Stepper + Aktion */
+  .gericht-aktion { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .stepper { display: flex; align-items: center; gap: 8px; }
+  .stepper button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #ddd; background: #f7f7f7; font-size: 1rem; cursor: pointer; }
+  .stepper span { min-width: 18px; text-align: center; font-weight: bold; }
 
   /* Toast unten zentriert */
   .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #34c759; color: white; padding: 14px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 6px 20px rgba(0,0,0,0.2); z-index: 99998; }
