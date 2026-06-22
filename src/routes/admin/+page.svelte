@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { restaurants } from '$lib/data';
-  import { geloeschteLieferanten, loescheLieferant, stelleLieferantWiederHer } from '$lib/stores/lieferanten.js';
+  import { deaktivierteLieferanten, setzeLieferantAktiv } from '$lib/stores/lieferanten.js';
   import { bewertungen, bewertungLoeschen, bewertungBearbeiten } from '$lib/stores/bewertungen.js';
 
   // 🛠️ ADMIN-DASHBOARD mit Tabs + Editier-Modus.
@@ -33,8 +33,16 @@
   onMount(() => {
     bestellungen = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
     entsperrt = sessionStorage.getItem('lieferino_admin') === 'true';
+    // Editier-Modus bleibt während der Sitzung erhalten (auch nach Seitenwechsel).
+    editierModus = sessionStorage.getItem('lieferino_admin_edit') === 'true';
     ladeNutzer();
   });
+
+  // Schalter umlegen + den Zustand für die Sitzung merken.
+  function toggleEdit() {
+    editierModus = !editierModus;
+    sessionStorage.setItem('lieferino_admin_edit', String(editierModus));
+  }
 
   function entsperren(e) {
     e.preventDefault();
@@ -49,6 +57,7 @@
 
   function adminSperren() {
     sessionStorage.removeItem('lieferino_admin');
+    sessionStorage.removeItem('lieferino_admin_edit');
     entsperrt = false;
     editierModus = false;
     schluesselEingabe = '';
@@ -131,7 +140,7 @@
 
     <!-- ✏️ Editier-Modus-Schalter -->
     <label class="edit-switch" class:an={editierModus}>
-      <input type="checkbox" bind:checked={editierModus} />
+      <input type="checkbox" checked={editierModus} onchange={toggleEdit} />
       ✏️ Editier-Modus {editierModus ? 'AN' : 'aus'}
       <span class="edit-hinweis">{editierModus ? '(Änderungen/Löschen möglich)' : '(nur Ansicht)'}</span>
     </label>
@@ -147,7 +156,7 @@
     <!-- TAB: Übersicht -->
     {#if aktiverTab === 'uebersicht'}
       <div class="kacheln">
-        <div class="kachel"><span class="zahl">{$geloeschteLieferanten.length ? restaurants.length - $geloeschteLieferanten.length : restaurants.length}</span><span class="label">Aktive Restaurants</span></div>
+        <div class="kachel"><span class="zahl">{restaurants.length - $deaktivierteLieferanten.length}</span><span class="label">Aktive Restaurants</span></div>
         <div class="kachel"><span class="zahl">{bestellungen.length}</span><span class="label">Bestellungen</span></div>
         <div class="kachel"><span class="zahl">{verkaufteArtikel}</span><span class="label">Verkaufte Artikel</span></div>
         <div class="kachel"><span class="zahl">{umsatz.toFixed(2)}€</span><span class="label">Umsatz</span></div>
@@ -168,27 +177,31 @@
     <!-- TAB: Lieferanten -->
     {#if aktiverTab === 'lieferanten'}
       <h2>🍽️ Lieferanten verwalten</h2>
-      {#if !editierModus}<p class="hint">ℹ️ Aktiviere den Editier-Modus, um Lieferanten zu löschen.</p>{/if}
+      {#if !editierModus}<p class="hint">ℹ️ Aktiviere den Editier-Modus, um Lieferanten zu aktivieren/deaktivieren.</p>{/if}
+      <p class="hint">🚨 Hinweis: Der Aktiv/Deaktiviert-Status muss später ans Backend gemeldet werden. Deaktivierte Lieferanten sind für normale Nutzer unsichtbar.</p>
       <div class="tabelle">
         <div class="zeile kopf-zeile">
-          <span>Restaurant</span><span>Typ</span><span>Bewertung</span><span>Status / Aktion</span>
+          <span>Restaurant</span><span>Typ</span><span>Status</span><span>Aktion</span>
         </div>
         {#each restaurants as r}
-          {@const geloescht = $geloeschteLieferanten.includes(r.slug)}
-          <div class="zeile" class:inaktiv={geloescht}>
+          {@const aktiv = !$deaktivierteLieferanten.includes(r.slug)}
+          <div class="zeile" class:inaktiv={!aktiv}>
             <span>{r.emoji} {r.name}</span>
             <span>{r.typ}</span>
-            <span>⭐ {r.bewertung}</span>
             <span>
-              {#if geloescht}
-                <span class="badge rot">gelöscht</span>
-                {#if editierModus}
-                  <button class="mini-btn" onclick={() => stelleLieferantWiederHer(r.slug)}>↩️ Wiederherstellen</button>
-                {/if}
-              {:else if editierModus}
-                <button class="mini-btn gefahr" onclick={() => loescheLieferant(r.slug)}>🗑️ Löschen</button>
+              {#if aktiv}<span class="badge gruen">✅ Aktiv</span>{:else}<span class="badge rot">🚫 Deaktiviert</span>{/if}
+            </span>
+            <span>
+              {#if editierModus}
+                <!-- Schalter: aktiv -> deaktivieren, deaktiviert -> aktivieren -->
+                <button
+                  class="mini-btn {aktiv ? 'gefahr' : 'gut'}"
+                  onclick={() => setzeLieferantAktiv(r.slug, !aktiv)}
+                >
+                  {aktiv ? '🚫 Deaktivieren' : '✅ Aktivieren'}
+                </button>
               {:else}
-                <span class="badge gruen">aktiv</span>
+                <span class="dim">—</span>
               {/if}
             </span>
           </div>
@@ -322,6 +335,8 @@
 
   .mini-btn { background: #f1f1f1; border: none; border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 0.8rem; margin-left: 4px; }
   .mini-btn.gefahr { background: #ffebee; color: #c62828; }
+  .mini-btn.gut { background: #e8f5e9; color: #2e7d32; }
+  .dim { color: #bbb; }
   .nutzer-aktion { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 
   .rev-titel { margin: 18px 0 6px; }

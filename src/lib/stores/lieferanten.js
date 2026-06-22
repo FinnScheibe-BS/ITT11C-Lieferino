@@ -2,41 +2,53 @@ import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { restaurants } from '$lib/data';
 
-// 🗑️ VERWALTUNG GELÖSCHTER LIEFERANTEN
+// 🔌 AKTIV/DEAKTIVIERT-STATUS DER LIEFERANTEN
 // Die Basis-Restaurants kommen aus der (unveränderlichen) zentralen Quelle.
-// Damit der Admin Lieferanten "löschen" kann, merken wir uns hier die Slugs
-// der ausgeblendeten Lieferanten im localStorage. Öffentliche Listen filtern
-// diese dann heraus.
+// Der Admin kann Lieferanten "deaktivieren" – wir merken uns die Slugs der
+// deaktivierten Lieferanten im localStorage. Deaktivierte Lieferanten sind für
+// normale Nutzer (öffentliche Listen) unsichtbar.
 //
-// 🚨 BACKEND-HINWEIS: Das ist ein reines Frontend-Ausblenden. Echtes Löschen/
-// Verwalten von Restaurants gehört ins Backend (DELETE /api/admin/restaurants/:id).
+// 🚨🚨🚨 BACKEND-HINWEIS 🚨🚨🚨
+// Der Aktiv/Deaktiviert-Status liegt aktuell nur lokal im Browser. Das Backend
+// MUSS diesen Status speichern und ausliefern, z.B.:
+//   PATCH /api/admin/restaurants/:slug   Body: { aktiv: true|false }
+//   GET   /api/restaurants               liefert nur AKTIVE für normale Nutzer
+// Dann lädt das Frontend den Status vom Server statt aus dem localStorage.
 
 function ladeStart() {
   if (!browser) return [];
   try {
-    return JSON.parse(localStorage.getItem('lieferino_geloeschte_lieferanten') || '[]');
+    return JSON.parse(localStorage.getItem('lieferino_deaktivierte_lieferanten') || '[]');
   } catch {
     return [];
   }
 }
 
-export const geloeschteLieferanten = writable(ladeStart());
+// Liste der Slugs, die deaktiviert sind.
+export const deaktivierteLieferanten = writable(ladeStart());
 
 if (browser) {
-  geloeschteLieferanten.subscribe((liste) => {
-    localStorage.setItem('lieferino_geloeschte_lieferanten', JSON.stringify(liste));
+  deaktivierteLieferanten.subscribe((liste) => {
+    localStorage.setItem('lieferino_deaktivierte_lieferanten', JSON.stringify(liste));
   });
 }
 
-export function loescheLieferant(slug) {
-  geloeschteLieferanten.update((l) => (l.includes(slug) ? l : [...l, slug]));
+// Setzt ein Restaurant auf aktiv (true) oder deaktiviert (false).
+export function setzeLieferantAktiv(slug, aktiv) {
+  deaktivierteLieferanten.update((liste) => {
+    if (aktiv) {
+      return liste.filter((s) => s !== slug); // aus der Deaktiviert-Liste entfernen
+    }
+    return liste.includes(slug) ? liste : [...liste, slug]; // hinzufügen
+  });
 }
 
-export function stelleLieferantWiederHer(slug) {
-  geloeschteLieferanten.update((l) => l.filter((s) => s !== slug));
+// Prüft, ob ein Lieferant aktiv ist.
+export function istAktiv(slug, deaktivierteListe) {
+  return !deaktivierteListe.includes(slug);
 }
 
-// Nur die NICHT gelöschten Restaurants – für alle öffentlichen Listen.
-export const aktiveRestaurants = derived(geloeschteLieferanten, ($geloescht) =>
-  restaurants.filter((r) => !$geloescht.includes(r.slug))
+// Nur die AKTIVEN Restaurants – für alle öffentlichen Listen (normale Nutzer).
+export const aktiveRestaurants = derived(deaktivierteLieferanten, ($deaktiviert) =>
+  restaurants.filter((r) => !$deaktiviert.includes(r.slug))
 );
