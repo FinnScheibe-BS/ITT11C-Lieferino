@@ -1,5 +1,13 @@
 # 📋 Fortschritt – Lieferino
 
+> ### ⚡ WICHTIG ZUERST
+> Falls nach Änderungen an den Restaurant-/Menü-Daten in der App etwas **nicht passt**,
+> im Projektordner `Lieferino` einmal diesen Befehl ausführen:
+> ```
+> node tools/refresh.mjs
+> ```
+> Danach `npm run dev` neu laden – dann passt alles wieder. ✅
+
 Übersicht über alles, was am Frontend dazugekommen ist. Backend-Themen sind im Code
 mit großen `🚨`-Hinweisen markiert (dort steht jeweils, welcher Endpunkt gebraucht wird).
 
@@ -81,9 +89,8 @@ mit großen `🚨`-Hinweisen markiert (dort steht jeweils, welcher Endpunkt gebr
 
 ## 🥚 Easter Eggs
 - **Jufalls-Jumpscare**: pro Sekunde 1-zu-10000-Chance auf ein kurzes GIF + Sound (global).
-- **Konami-Code** (↑ ↑ ↓ ↓ ← → ← → B A) → löst den Jumpscare aus.
-- **„Drachenlord"** in die Suche tippen → ein verstecktes Bild fliegt über die Seite,
-  Konfetti, dann verabschiedet sich die Seite.
+- **Konami-Code** (↑ ↑ ↓ ↓ ← → ← → B A)
+- **„Drachenlord"** in die Suche tippen
 - **`pizzapizzapizza`** in die Suche → Konfetti + Geheim-Gutschein `PIZZAPARTY` (25 %).
 - **Geburtstag**: am Geburtstag (laut Konto) → Konfetti + Code `GEBURTSTAG` (20 %).
 - **Hero-Titel 10× klicken** → Konfetti-Überraschung.

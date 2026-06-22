@@ -7,8 +7,8 @@
 // Felder pro Restaurant: u.a. oeffnetUm / schliesstUm (für "geöffnet?"-Anzeige)
 //
 // WICHTIG: Diese Datei wird NICHT direkt von der App geladen, sondern dient
-// als Vorlage. Wenn du hier etwas änderst, danach einmal den Generator laufen
-// lassen:   node scripts/build-bundle.mjs
+// als Vorlage. Wenn du hier etwas änderst, danach einmal ausführen:
+//   node tools/refresh.mjs
 // =====================================================================
 
 export const restaurants = [
