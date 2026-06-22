@@ -150,8 +150,19 @@
     src: url('/fonts/enchantment.ttf') format('truetype');
     font-display: swap;
   }
-  :global(html[data-sga='true'] body) {
-    font-family: 'Enchanting', sans-serif;
+  /* Auf ALLE Elemente anwenden + !important, damit die seiteneigenen
+     "font-family: sans-serif"-Regeln überschrieben werden. Zahlen/Emojis,
+     die die Schrift nicht hat, fallen automatisch auf sans-serif zurück. */
+  :global(html[data-sga='true']),
+  :global(html[data-sga='true'] body),
+  :global(html[data-sga='true'] body *) {
+    font-family: 'Enchanting', sans-serif !important;
+  }
+  /* Gezielt für die Navigation (überschreibt deren eigenes !important). */
+  :global(html[data-sga='true'] .nav-links-wrapper a),
+  :global(html[data-sga='true'] .nav-burger-btn),
+  :global(html[data-sga='true'] .nav-impressum) {
+    font-family: 'Enchanting', sans-serif !important;
   }
 
   /* 🌙/☀️ Theme-Schalter: runder Button unten links */
