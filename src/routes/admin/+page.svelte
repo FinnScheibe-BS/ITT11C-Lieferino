@@ -8,9 +8,38 @@
 
   let bestellungen = $state([]);
 
+  // 🔐 Sicherheitsschlüssel für den Admin-Bereich.
+  // ⚠️ Steht hier absichtlich im Klartext (vom Team so gewünscht). Für einen
+  // echten Schutz müsste die Prüfung im Backend mit einem gehashten Schlüssel
+  // erfolgen – im Frontend kann man den Schlüssel im Quelltext auslesen.
+  const ADMIN_KEY = 'Lieferino#2026_DevOps';
+
+  let entsperrt = $state(false);
+  let schluesselEingabe = $state('');
+  let schluesselFehler = $state('');
+
   onMount(() => {
     bestellungen = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
+    // Schon in dieser Browser-Sitzung entsperrt?
+    entsperrt = sessionStorage.getItem('lieferino_admin') === 'true';
   });
+
+  function entsperren(e) {
+    e.preventDefault();
+    if (schluesselEingabe === ADMIN_KEY) {
+      entsperrt = true;
+      sessionStorage.setItem('lieferino_admin', 'true'); // bis zum Tab-Schließen merken
+      schluesselFehler = '';
+    } else {
+      schluesselFehler = 'Falscher Sicherheitsschlüssel. 🔒';
+    }
+  }
+
+  function adminSperren() {
+    sessionStorage.removeItem('lieferino_admin');
+    entsperrt = false;
+    schluesselEingabe = '';
+  }
 
   // Kennzahlen automatisch aus den Bestellungen berechnen.
   let umsatz = $derived(bestellungen.reduce((s, b) => s + b.summe, 0));
@@ -43,7 +72,20 @@
 </script>
 
 <div class="seite">
+  {#if !entsperrt}
+    <!-- 🔐 Sperrbildschirm: Sicherheitsschlüssel verlangen -->
+    <div class="sperre">
+      <h1>🔐 Admin-Bereich</h1>
+      <p>Dieser Bereich ist geschützt. Bitte gib den Sicherheitsschlüssel ein.</p>
+      <form onsubmit={entsperren}>
+        <input type="password" placeholder="Sicherheitsschlüssel" bind:value={schluesselEingabe} />
+        {#if schluesselFehler}<p class="sperre-fehler">{schluesselFehler}</p>{/if}
+        <button type="submit">Entsperren 🔓</button>
+      </form>
+    </div>
+  {:else}
   <h1>🛠️ Admin-Dashboard</h1>
+  <button class="sperren-btn" onclick={adminSperren}>🔒 Sperren</button>
 
   <!-- 🚨🚨🚨 HINWEIS FÜRS BACKEND-TEAM 🚨🚨🚨 -->
   <!--
@@ -105,10 +147,20 @@
       </div>
     {/each}
   </div>
+  {/if}
 </div>
 
 <style>
   .seite { max-width: 900px; margin: 0 auto; padding: 20px; font-family: sans-serif; }
+
+  /* 🔐 Sperrbildschirm */
+  .sperre { max-width: 380px; margin: 60px auto; background: white; border: 1px solid #eee; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
+  .sperre p { color: #777; font-size: 0.9rem; }
+  .sperre form { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+  .sperre input { padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; }
+  .sperre button { padding: 13px; background: #673ab7; color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
+  .sperre-fehler { color: #dc3545; font-weight: 600; font-size: 0.85rem; margin: 0; }
+  .sperren-btn { float: right; background: #f1f1f1; border: none; border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 600; color: #555; }
   h1 { margin-bottom: 24px; }
   h2 { margin: 30px 0 14px; }
 

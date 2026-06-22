@@ -47,7 +47,14 @@
   let zeigtZweitname = $state(false);
   let geburtsdatumInput = $state("");
   let altersFehler = $state("");
-  
+  let namensFehler = $state(""); // Fehlermeldung für Vor-/Nachname
+
+  // Prüft einen Namen: mind. 2 Zeichen, nur Buchstaben (inkl. Umlaute),
+  // Leerzeichen, Bindestrich und Apostroph erlaubt – KEINE Zahlen.
+  function nameGueltig(name) {
+    return /^[A-Za-zÄÖÜäöüß' -]{2,}$/.test(name.trim());
+  }
+
   // Dynamisches maximales Jahr berechnen (heutiges Datum im YYYY-MM-DD Format)
   let heutigesDatumIso = new Date().toISOString().split('T')[0];
 
@@ -111,8 +118,21 @@
 
   function geheZuSchritt3(e) {
     e.preventDefault();
+
+    // Namens-Check: Vor- und Nachname müssen gültig sein (min. 2 Buchstaben,
+    // keine Zahlen). Ein optionaler Zweitname wird nur geprüft, wenn er ausgefüllt ist.
+    if (!nameGueltig(vornameInput) || !nameGueltig(nachnameInput)) {
+      namensFehler = "Vor- und Nachname brauchen mind. 2 Buchstaben und dürfen keine Zahlen enthalten. ✍️";
+      return;
+    }
+    if (zeigtZweitname && zweitnameInput.trim() !== "" && !nameGueltig(zweitnameInput)) {
+      namensFehler = "Der zweite Name darf keine Zahlen enthalten. ✍️";
+      return;
+    }
+    namensFehler = "";
+
     if (!geburtsdatumInput) return;
-    
+
     const geburtstag = new Date(geburtsdatumInput);
     const jahr = geburtstag.getFullYear();
     const heute = new Date();
@@ -339,6 +359,11 @@
               <input type="text" id="nachname" placeholder="Mustermann" bind:value={nachnameInput} required />
             </div>
           </div>
+
+          <!-- Fehlermeldung bei ungültigem Namen -->
+          {#if namensFehler}
+            <p class="error-msg">{namensFehler}</p>
+          {/if}
 
           <div class="input-group">
             <label for="geburt">Geburtsdatum (Alters-Check)</label>

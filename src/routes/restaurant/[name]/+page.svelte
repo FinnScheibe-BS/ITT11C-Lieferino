@@ -1,4 +1,5 @@
 <script>
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { getRestaurant } from '$lib/data';
   import { zumWarenkorb } from '$lib/stores/cart.js';
@@ -8,6 +9,19 @@
   // Den Slug aus der URL holen (z.B. "luigis-pizzeria") und das Restaurant suchen.
   let slug = $derived($page.params.name);
   let restaurant = $derived(getRestaurant(slug));
+
+  // Frühere Bestellungen laden, um zu prüfen, ob man hier schon bestellt hat.
+  let meineBestellungen = $state([]);
+  onMount(() => {
+    meineBestellungen = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
+  });
+
+  // ✅ Darf nur bewerten, wer hier nachweislich schon bestellt hat.
+  let hatHierBestellt = $derived(
+    meineBestellungen.some((b) =>
+      (b.artikel || []).some((a) => a.restaurant === restaurant?.name)
+    )
+  );
 
   // Reviews dieses Restaurants aus dem Store ziehen.
   let reviews = $derived($bewertungen[slug] || []);
@@ -47,6 +61,7 @@
 
   function bewertungAbschicken(e) {
     e.preventDefault();
+    if (!hatHierBestellt) return; // Schutz: nur nach Bestellung
     if (neuName.trim() === '' || neuText.trim() === '') return;
     bewertungHinzufuegen(slug, { name: neuName, sterne: neuSterne, text: neuText });
     // Felder zurücksetzen
@@ -86,7 +101,9 @@
           </button>
         </h1>
         <p class="meta">
-          ⭐ {durchschnitt.toFixed(1)} ({reviews.length} Bewertungen) · ⏱️ {restaurant.lieferzeit} · Min. {restaurant.minBestell}€
+          <!-- Klick auf die Bewertung springt zu den Reviews -->
+          <a href="#bewertungen" class="bewertung-link">⭐ {durchschnitt.toFixed(1)} ({reviews.length} Bewertungen)</a>
+          · ⏱️ {restaurant.lieferzeit} · Min. {restaurant.minBestell}€
         </p>
         <p class="oeffnung">
           {#if geoeffnet}
@@ -129,21 +146,25 @@
     </div>
 
     <!-- ⭐ BEWERTUNGEN -->
-    <h2>⭐ Bewertungen ({reviews.length})</h2>
+    <h2 id="bewertungen">⭐ Bewertungen ({reviews.length})</h2>
 
-    <!-- Formular für eine neue Bewertung -->
-    <form class="review-form" onsubmit={bewertungAbschicken}>
-      <input type="text" placeholder="Dein Name" bind:value={neuName} required />
-      <select bind:value={neuSterne}>
-        <option value={5}>⭐⭐⭐⭐⭐ (5)</option>
-        <option value={4}>⭐⭐⭐⭐ (4)</option>
-        <option value={3}>⭐⭐⭐ (3)</option>
-        <option value={2}>⭐⭐ (2)</option>
-        <option value={1}>⭐ (1)</option>
-      </select>
-      <textarea placeholder="Wie war dein Essen?" bind:value={neuText} required></textarea>
-      <button type="submit">Bewertung abschicken</button>
-    </form>
+    <!-- Formular nur, wenn man hier schon bestellt hat -->
+    {#if hatHierBestellt}
+      <form class="review-form" onsubmit={bewertungAbschicken}>
+        <input type="text" placeholder="Dein Name" bind:value={neuName} required />
+        <select bind:value={neuSterne}>
+          <option value={5}>⭐⭐⭐⭐⭐ (5)</option>
+          <option value={4}>⭐⭐⭐⭐ (4)</option>
+          <option value={3}>⭐⭐⭐ (3)</option>
+          <option value={2}>⭐⭐ (2)</option>
+          <option value={1}>⭐ (1)</option>
+        </select>
+        <textarea placeholder="Wie war dein Essen?" bind:value={neuText} required></textarea>
+        <button type="submit">Bewertung abschicken</button>
+      </form>
+    {:else}
+      <p class="review-sperre">🔒 Du kannst dieses Restaurant bewerten, sobald du hier etwas bestellt hast.</p>
+    {/if}
 
     <!-- Liste der vorhandenen Bewertungen -->
     {#if reviews.length === 0}
@@ -222,6 +243,8 @@
   .review-form textarea { min-height: 70px; resize: vertical; }
   .review-form button { background: #673ab7; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
 
+  .bewertung-link { color: inherit; text-decoration: underline; text-decoration-style: dotted; cursor: pointer; }
+  .review-sperre { background: #f7f7f7; border: 1px solid #eee; border-radius: 12px; padding: 14px; color: #777; }
   .keine-reviews { color: #777; }
   .reviews { display: flex; flex-direction: column; gap: 10px; }
   .review { background: white; border: 1px solid #eee; border-radius: 12px; padding: 14px; }
