@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { warenkorb, gesamtSumme, leereWarenkorb } from '$lib/stores/cart.js';
   import { sendeBestellBestaetigung } from '$lib/services/email.js';
 
@@ -15,10 +15,64 @@
   let bestellt = $state(false);
   let liefertermin = $state('');
 
+  // 🎟️ GUTSCHEINE: gültige Codes und was sie bewirken.
+  const GUTSCHEINE = {
+    LIEFERINO10: { typ: 'prozent', wert: 10, text: '10% Rabatt' },
+    WILLKOMMEN5: { typ: 'betrag', wert: 5, text: '5€ Rabatt' },
+    GRATIS: { typ: 'lieferung', wert: 0, text: 'Gratis Lieferung' }
+  };
+  let gutscheinCode = $state('');
+  let aktiverGutschein = $state(null); // der eingelöste Gutschein (oder null)
+  let gutscheinFehler = $state('');
+
+  function gutscheinEinloesen() {
+    const code = gutscheinCode.trim().toUpperCase();
+    if (GUTSCHEINE[code]) {
+      aktiverGutschein = { code, ...GUTSCHEINE[code] };
+      gutscheinFehler = '';
+    } else {
+      aktiverGutschein = null;
+      gutscheinFehler = 'Dieser Gutscheincode ist leider ungültig. 🙁';
+    }
+  }
+
+  // Liefergebühr: 0€, wenn ein "Gratis Lieferung"-Gutschein aktiv ist.
+  let lieferkosten = $derived(aktiverGutschein?.typ === 'lieferung' ? 0 : LIEFERGEBUEHR);
+
+  // Rabatt-Betrag je nach Gutschein-Typ.
+  let rabatt = $derived.by(() => {
+    if (!aktiverGutschein) return 0;
+    if (aktiverGutschein.typ === 'prozent') return ($gesamtSumme * aktiverGutschein.wert) / 100;
+    if (aktiverGutschein.typ === 'betrag') return Math.min(aktiverGutschein.wert, $gesamtSumme);
+    return 0;
+  });
+
+  // Endsumme = Zwischensumme − Rabatt + Lieferkosten (nie unter 0).
+  let endsumme = $derived(Math.max(0, $gesamtSumme - rabatt + lieferkosten));
+
+  // 🚚 LIVE-LIEFERSTATUS: Die Bestellung durchläuft mehrere Phasen.
+  const STATUS_PHASEN = ['Bestellung erhalten', 'Wird zubereitet', 'Unterwegs', 'Geliefert'];
+  let statusIndex = $state(0);
+  let statusTimer;
+
   onMount(() => {
     const gespeichert = localStorage.getItem('lieferino_user');
     if (gespeichert) user = JSON.parse(gespeichert);
   });
+
+  onDestroy(() => clearInterval(statusTimer));
+
+  // Lässt den Status alle 3 Sekunden eine Phase weiterspringen.
+  function starteLieferstatus() {
+    statusIndex = 0;
+    statusTimer = setInterval(() => {
+      if (statusIndex < STATUS_PHASEN.length - 1) {
+        statusIndex += 1;
+      } else {
+        clearInterval(statusTimer);
+      }
+    }, 3000);
+  }
 
   // Berechnet einen voraussichtlichen Liefertermin: jetzt + ca. 40 Minuten.
   function berechneLiefertermin() {
@@ -41,7 +95,8 @@
     const bestellung = {
       datum: new Date().toISOString(),
       artikel: $warenkorb,
-      summe: $gesamtSumme + LIEFERGEBUEHR,
+      summe: endsumme,
+      gutschein: aktiverGutschein?.code || null,
       zahlungsart,
       liefertermin
     };
@@ -56,6 +111,7 @@
 
     leereWarenkorb();
     bestellt = true;
+    starteLieferstatus(); // 🚚 Live-Status starten
   }
 </script>
 
@@ -66,9 +122,21 @@
       <h1>🎉 Bestellung erfolgreich!</h1>
       <p>Vielen Dank für deine Bestellung bei Lieferino.</p>
       <p class="liefertermin">🚚 Voraussichtliche Lieferung bis <strong>{liefertermin} Uhr</strong></p>
+
+      <!-- 🚚 LIVE-LIEFERSTATUS: zeigt die aktuelle Phase an -->
+      <div class="status-tracker">
+        {#each STATUS_PHASEN as phase, i}
+          <div class="status-schritt" class:erreicht={i <= statusIndex} class:aktuell={i === statusIndex}>
+            <div class="status-punkt">{i < statusIndex ? '✅' : i === statusIndex ? '🔄' : '⬜'}</div>
+            <span>{phase}</span>
+          </div>
+        {/each}
+      </div>
+
       {#if user?.email}
         <p class="mail-info">📧 Eine Bestätigung wurde an {user.email} geschickt.</p>
       {/if}
+      <a href="/bestellungen" class="btn sekundaer">Meine Bestellungen</a>
       <a href="/" class="btn">Zurück zur Startseite</a>
     </div>
   {:else if $warenkorb.length === 0}
@@ -111,6 +179,21 @@
       </div>
     </section>
 
+    <!-- 🎟️ Gutscheincode -->
+    <section class="block">
+      <h2>Gutscheincode</h2>
+      <div class="gutschein-zeile">
+        <input type="text" placeholder="z.B. LIEFERINO10" bind:value={gutscheinCode} />
+        <button class="einloesen" onclick={gutscheinEinloesen}>Einlösen</button>
+      </div>
+      {#if aktiverGutschein}
+        <p class="gutschein-ok">✅ „{aktiverGutschein.code}" aktiv: {aktiverGutschein.text}</p>
+      {:else if gutscheinFehler}
+        <p class="warnung">{gutscheinFehler}</p>
+      {/if}
+      <p class="gutschein-tipp">💡 Versuch's mal mit <strong>LIEFERINO10</strong>, <strong>WILLKOMMEN5</strong> oder <strong>GRATIS</strong>.</p>
+    </section>
+
     <!-- 📦 Bestellübersicht -->
     <section class="block">
       <h2>Deine Bestellung</h2>
@@ -121,12 +204,23 @@
         </div>
       {/each}
       <div class="uebersicht-zeile">
+        <span>Zwischensumme</span>
+        <span>{$gesamtSumme.toFixed(2)}€</span>
+      </div>
+      <!-- Rabatt nur anzeigen, wenn ein Gutschein greift -->
+      {#if rabatt > 0}
+        <div class="uebersicht-zeile rabatt">
+          <span>Rabatt ({aktiverGutschein.code})</span>
+          <span>−{rabatt.toFixed(2)}€</span>
+        </div>
+      {/if}
+      <div class="uebersicht-zeile">
         <span>Liefergebühr</span>
-        <span>{LIEFERGEBUEHR.toFixed(2)}€</span>
+        <span>{lieferkosten === 0 ? 'Gratis 🎉' : lieferkosten.toFixed(2) + '€'}</span>
       </div>
       <div class="uebersicht-zeile gesamt">
         <span>Gesamt</span>
-        <span>{($gesamtSumme + LIEFERGEBUEHR).toFixed(2)}€</span>
+        <span>{endsumme.toFixed(2)}€</span>
       </div>
     </section>
 
@@ -160,4 +254,21 @@
   .erfolg .liefertermin { font-size: 1.1rem; margin: 16px 0; }
   .erfolg .mail-info { color: #777; }
   .erfolg .btn, .leer .btn { margin-top: 20px; }
+  .btn.sekundaer { background: #f1f1f1; color: #333; margin-right: 10px; }
+
+  /* 🎟️ Gutschein */
+  .gutschein-zeile { display: flex; gap: 10px; }
+  .gutschein-zeile input { flex: 1; padding: 11px; border: 1px solid #ddd; border-radius: 10px; }
+  .einloesen { background: #673ab7; color: white; border: none; padding: 0 18px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+  .gutschein-ok { color: #34c759; font-weight: 600; margin: 10px 0 0; }
+  .gutschein-tipp { color: #999; font-size: 0.82rem; margin: 8px 0 0; }
+  .rabatt { color: #34c759; }
+
+  /* 🚚 Live-Lieferstatus */
+  .status-tracker { display: flex; justify-content: space-between; gap: 6px; max-width: 460px; margin: 24px auto; }
+  .status-schritt { flex: 1; text-align: center; opacity: 0.4; transition: opacity 0.3s ease; }
+  .status-schritt.erreicht { opacity: 1; }
+  .status-schritt .status-punkt { font-size: 1.5rem; margin-bottom: 6px; }
+  .status-schritt span { font-size: 0.78rem; display: block; }
+  .status-schritt.aktuell span { font-weight: bold; color: #673ab7; }
 </style>

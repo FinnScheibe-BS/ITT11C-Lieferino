@@ -2,10 +2,30 @@
   import { page } from '$app/stores';
   import { getRestaurant } from '$lib/data';
   import { zumWarenkorb } from '$lib/stores/cart.js';
+  import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
+  import { bewertungen, bewertungHinzufuegen } from '$lib/stores/bewertungen.js';
 
   // Den Slug aus der URL holen (z.B. "luigis-pizzeria") und das Restaurant suchen.
   let slug = $derived($page.params.name);
   let restaurant = $derived(getRestaurant(slug));
+
+  // Reviews dieses Restaurants aus dem Store ziehen.
+  let reviews = $derived($bewertungen[slug] || []);
+
+  // Eingabefelder für eine neue Bewertung.
+  let neuName = $state('');
+  let neuSterne = $state(5);
+  let neuText = $state('');
+
+  function bewertungAbschicken(e) {
+    e.preventDefault();
+    if (neuName.trim() === '' || neuText.trim() === '') return;
+    bewertungHinzufuegen(slug, { name: neuName, sterne: neuSterne, text: neuText });
+    // Felder zurücksetzen
+    neuName = '';
+    neuText = '';
+    neuSterne = 5;
+  }
 
   // Kleine Bestätigung ("Pizza hinzugefügt"), die kurz eingeblendet wird.
   let hinweis = $state('');
@@ -28,7 +48,13 @@
     <div class="kopf">
       <span class="emoji">{restaurant.emoji}</span>
       <div>
-        <h1>{restaurant.name}</h1>
+        <h1>
+          {restaurant.name}
+          <!-- ❤️ Favoriten-Herz -->
+          <button class="herz" onclick={() => toggleFavorit(slug)} aria-label="Favorit">
+            {$favoriten.includes(slug) ? '❤️' : '🤍'}
+          </button>
+        </h1>
         <p class="meta">
           ⭐ {restaurant.bewertung} · ⏱️ {restaurant.lieferzeit} · Mindestbestellwert {restaurant.minBestell}€
         </p>
@@ -49,6 +75,40 @@
         </div>
       {/each}
     </div>
+
+    <!-- ⭐ BEWERTUNGEN -->
+    <h2>⭐ Bewertungen ({reviews.length})</h2>
+
+    <!-- Formular für eine neue Bewertung -->
+    <form class="review-form" onsubmit={bewertungAbschicken}>
+      <input type="text" placeholder="Dein Name" bind:value={neuName} required />
+      <select bind:value={neuSterne}>
+        <option value={5}>⭐⭐⭐⭐⭐ (5)</option>
+        <option value={4}>⭐⭐⭐⭐ (4)</option>
+        <option value={3}>⭐⭐⭐ (3)</option>
+        <option value={2}>⭐⭐ (2)</option>
+        <option value={1}>⭐ (1)</option>
+      </select>
+      <textarea placeholder="Wie war dein Essen?" bind:value={neuText} required></textarea>
+      <button type="submit">Bewertung abschicken</button>
+    </form>
+
+    <!-- Liste der vorhandenen Bewertungen -->
+    {#if reviews.length === 0}
+      <p class="keine-reviews">Noch keine Bewertungen – sei die/der Erste! 🌟</p>
+    {:else}
+      <div class="reviews">
+        {#each reviews as review}
+          <div class="review">
+            <div class="review-kopf">
+              <strong>{review.name}</strong>
+              <span>{'⭐'.repeat(review.sterne)}</span>
+            </div>
+            <p>{review.text}</p>
+          </div>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   <!-- Kurzer Hinweis nach dem Hinzufügen -->
@@ -83,4 +143,19 @@
 
   /* Toast unten zentriert */
   .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #34c759; color: white; padding: 14px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 6px 20px rgba(0,0,0,0.2); z-index: 99998; }
+
+  /* ❤️ Herz-Button neben dem Namen */
+  .herz { background: none; border: none; font-size: 1.4rem; cursor: pointer; vertical-align: middle; }
+
+  /* ⭐ Bewertungen */
+  .review-form { display: flex; flex-direction: column; gap: 10px; background: white; border: 1px solid #eee; border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+  .review-form input, .review-form select, .review-form textarea { padding: 10px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; font-family: inherit; }
+  .review-form textarea { min-height: 70px; resize: vertical; }
+  .review-form button { background: #673ab7; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+
+  .keine-reviews { color: #777; }
+  .reviews { display: flex; flex-direction: column; gap: 10px; }
+  .review { background: white; border: 1px solid #eee; border-radius: 12px; padding: 14px; }
+  .review-kopf { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .review p { margin: 0; color: #555; }
 </style>

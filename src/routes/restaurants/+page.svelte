@@ -1,19 +1,23 @@
 <script>
   // 🍽️ Restaurants kommen jetzt aus der zentralen Quelle (siehe $lib/data).
   import { restaurants } from '$lib/data';
+  import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
 
   // Variablen, die sich ändern können, bekommen ein $state().
   let gewaehlterTyp = $state('alle');
   let sortierung = $state('standard');
   let suche = $state(''); // 🔍 Freitext-Suche nach Name
+  let nurFavoriten = $state(false); // ❤️ Nur Favoriten anzeigen?
 
   // $derived berechnet die gefilterte + sortierte Liste automatisch neu,
-  // sobald sich Filter, Sortierung oder Suchtext ändern.
+  // sobald sich Filter, Sortierung, Suchtext oder Favoriten ändern.
   let gefilterteRestaurants = $derived(
     restaurants
       .filter((r) => gewaehlterTyp === 'alle' || r.typ === gewaehlterTyp)
       // toLowerCase() macht die Suche groß-/kleinschreibungs-egal.
       .filter((r) => r.name.toLowerCase().includes(suche.toLowerCase()))
+      // Favoriten-Filter: nur Restaurants, deren Slug in der Favoritenliste steht.
+      .filter((r) => !nurFavoriten || $favoriten.includes(r.slug))
       .sort((a, b) => {
         if (sortierung === 'bewertung') return b.bewertung - a.bewertung;
         if (sortierung === 'minbestell-auf') return a.minBestell - b.minBestell;
@@ -23,6 +27,13 @@
 
   // Wir sammeln alle vorkommenden Küchen-Typen für das Dropdown (ohne Dopplungen).
   let typen = [...new Set(restaurants.map((r) => r.typ))];
+
+  // Herz-Klick: verhindert, dass der Link dahinter ausgelöst wird.
+  function herzKlick(event, slug) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleFavorit(slug);
+  }
 </script>
 
 <div class="seite">
@@ -47,6 +58,11 @@
       <option value="bewertung">Beste Bewertung</option>
       <option value="minbestell-auf">Niedrigster Mindestbestellwert</option>
     </select>
+
+    <!-- ❤️ Umschalter: nur Favoriten anzeigen -->
+    <button class="fav-filter" class:aktiv={nurFavoriten} onclick={() => (nurFavoriten = !nurFavoriten)}>
+      {nurFavoriten ? '❤️ Nur Favoriten' : '🤍 Alle'}
+    </button>
   </div>
 
   <!-- Treffer-Anzahl -->
@@ -58,6 +74,10 @@
         <div class="emoji-bild">
           <span class="emoji-gross">{r.emoji}</span>
           <span class="rating-badge">⭐ {r.bewertung}</span>
+          <!-- ❤️ Favoriten-Herz oben links -->
+          <button class="herz" onclick={(e) => herzKlick(e, r.slug)} aria-label="Favorit">
+            {$favoriten.includes(r.slug) ? '❤️' : '🤍'}
+          </button>
         </div>
         <h3>{r.name}</h3>
         <p class="desc">{r.beschreibung}</p>
@@ -84,6 +104,9 @@
   .filter-bar { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
   .filter-bar .suchfeld { flex: 1; min-width: 200px; }
   .filter-bar input, .filter-bar select { padding: 11px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; }
+  .fav-filter { padding: 11px 16px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; font-size: 0.95rem; }
+  .fav-filter.aktiv { border-color: #e0245e; background: #fff0f5; }
+  .herz { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.85); border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 1.1rem; cursor: pointer; }
 
   .treffer { color: #777; font-size: 0.9rem; margin: 0 0 16px; }
 

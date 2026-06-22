@@ -99,7 +99,9 @@
           <span class="cart-badge">{anzahl}</span>
         {/if}
       </a>
+      <a href="/bestellungen">🧾 Bestellungen</a>
       <a href="/account">👤 Account</a>
+      <a href="/admin">🛠️ Admin</a>
 
       <div class="nav-impressum">
         <h4>Impressum</h4>
