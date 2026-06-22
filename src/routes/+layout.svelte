@@ -101,6 +101,7 @@
       </a>
       <a href="/bestellungen">🧾 Bestellungen</a>
       <a href="/account">👤 Account</a>
+      <a href="/login">🔑 Login</a>
       <a href="/admin">🛠️ Admin</a>
 
       <div class="nav-impressum">

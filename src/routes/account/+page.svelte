@@ -1,8 +1,18 @@
 <script>
   import { onMount } from 'svelte';
+  // 🔐 MFA-Funktionen
+  import { generiereSecret, otpauthUri, pruefeTotp } from '$lib/services/mfa.js';
+  import { eingeloggt, logout } from '$lib/stores/auth.js';
 
   let user = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
   let geladen = $state(false);
+
+  // 🔐 MFA-Einrichtungs-Zustand (nur für die Oberfläche)
+  let totpSecret = $state('');     // das gerade erzeugte Authenticator-Secret
+  let totpUri = $state('');        // die otpauth-Adresse für die App
+  let totpEingabe = $state('');    // der vom Nutzer eingegebene Test-Code
+  let totpFehler = $state('');     // Fehlermeldung bei falschem Code
+  let zeigeTotpEinrichtung = $state(false);
 
   // Edit-Modus gilt jetzt pro BEREICH (Kategorie) statt pro Feld
   let editBereich = $state({
@@ -44,9 +54,51 @@
     if (felder.includes('passwort')) inputs.passwort = ""; // Passwort-Feld leeren
   }
 
+  // 🔓 Ausloggen beendet nur die Session – das Konto bleibt erhalten!
   function ausloggen() {
-    localStorage.removeItem("lieferino_user");
+    logout();
     window.location.href = "/";
+  }
+
+  // 🔐 Speichert den (geänderten) Nutzer zurück in den localStorage.
+  function speichereUser() {
+    localStorage.setItem('lieferino_user', JSON.stringify(user));
+  }
+
+  // 📧 E-Mail-2FA direkt aktivieren (die E-Mail wurde bei der Registrierung
+  // bereits verifiziert, daher reicht hier ein Klick).
+  function aktiviereEmail2fa() {
+    user.mfa = { aktiv: true, methode: 'email' };
+    speichereUser();
+  }
+
+  // 📲 Authenticator-Einrichtung starten: Secret erzeugen + otpauth-Adresse bauen.
+  function starteTotpEinrichtung() {
+    totpSecret = generiereSecret();
+    totpUri = otpauthUri(totpSecret, user.email || 'kunde');
+    totpEingabe = '';
+    totpFehler = '';
+    zeigeTotpEinrichtung = true;
+  }
+
+  // 📲 Authenticator bestätigen: Test-Code prüfen, dann 2FA aktivieren.
+  async function totpBestaetigen() {
+    const okay = await pruefeTotp(totpSecret, totpEingabe);
+    if (okay) {
+      user.mfa = { aktiv: true, methode: 'totp', secret: totpSecret };
+      speichereUser();
+      zeigeTotpEinrichtung = false;
+      totpFehler = '';
+    } else {
+      totpFehler = 'Code stimmt nicht. Prüfe Uhrzeit/App und versuche es erneut.';
+    }
+  }
+
+  // 🔓 2FA wieder ausschalten.
+  function deaktiviereMfa() {
+    user.mfa = { aktiv: false };
+    speichereUser();
+    zeigeTotpEinrichtung = false;
   }
 </script>
 
@@ -57,7 +109,7 @@
     <p>Verwalte deine Daten und Lieferadressen</p>
   </div>
 
-  {#if geladen}
+  {#if $eingeloggt && geladen}
     <div class="profile-quadrat">
       
       <div class="category-section">
@@ -177,12 +229,53 @@
         {/if}
       </div>
 
+      <!-- 🔐 ZWEI-FAKTOR-AUTHENTIFIZIERUNG -->
+      <div class="category-section">
+        <div class="category-header">
+          <h3 class="category-title">🔐 Zwei-Faktor-Authentifizierung (2FA)</h3>
+        </div>
+
+        {#if user.mfa?.aktiv}
+          <!-- 2FA ist an -->
+          <p class="mfa-status an">
+            ✅ Aktiv – Methode: {user.mfa.methode === 'totp' ? 'Authenticator-App' : 'E-Mail-Code'}
+          </p>
+          <button onclick={deaktiviereMfa} class="mfa-btn aus">2FA deaktivieren</button>
+        {:else if zeigeTotpEinrichtung}
+          <!-- Authenticator-Einrichtung -->
+          <p class="mfa-info">1. Füge dieses Konto in deiner Authenticator-App hinzu:</p>
+          <div class="totp-secret">
+            <span class="label">Secret (manuell eingeben)</span>
+            <code>{totpSecret}</code>
+          </div>
+          <p class="mfa-mini">Oder diese Adresse in der App öffnen:</p>
+          <code class="totp-uri">{totpUri}</code>
+
+          <p class="mfa-info">2. Gib den 6-stelligen Code aus der App ein:</p>
+          <input type="text" maxlength="6" placeholder="z.B. 123456" bind:value={totpEingabe} class="inline-input" />
+          {#if totpFehler}<p class="mfa-fehler">{totpFehler}</p>{/if}
+
+          <div class="mfa-btn-row">
+            <button onclick={() => (zeigeTotpEinrichtung = false)} class="mfa-btn grau">Abbrechen</button>
+            <button onclick={totpBestaetigen} class="mfa-btn">Aktivieren ✅</button>
+          </div>
+        {:else}
+          <!-- 2FA ist aus: Methode wählen -->
+          <p class="mfa-status aus">⚠️ Nicht aktiv – dein Konto ist nur mit dem Passwort geschützt.</p>
+          <p class="mfa-info">Schütze dein Konto mit einem zweiten Faktor:</p>
+          <div class="mfa-btn-row">
+            <button onclick={aktiviereEmail2fa} class="mfa-btn">📧 Per E-Mail-Code</button>
+            <button onclick={starteTotpEinrichtung} class="mfa-btn">📲 Per Authenticator-App</button>
+          </div>
+        {/if}
+      </div>
+
       <button onclick={ausloggen} class="logout-btn">🔴 Ausloggen</button>
     </div>
   {:else}
     <div class="no-user">
       <p>Du bist aktuell nicht eingeloggt.</p>
-      <a href="/" class="login-redirect-btn">Zur Startseite / Login</a>
+      <a href="/login" class="login-redirect-btn">Zum Login 🔑</a>
     </div>
   {/if}
 </div>
@@ -231,6 +324,22 @@
   
   .logout-btn { margin-top: 5px; padding: 14px; background: #fff; color: #dc3545; border: 2px solid #dc3545; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; }
   .logout-btn:hover { background: #dc3545; color: white; }
+  /* 🔐 MFA / 2FA */
+  .mfa-status { font-weight: 700; margin: 0; }
+  .mfa-status.an { color: #34c759; }
+  .mfa-status.aus { color: #d97706; }
+  .mfa-info { font-size: 0.9rem; color: #555; margin: 6px 0; }
+  .mfa-mini { font-size: 0.82rem; color: #888; margin: 10px 0 4px; }
+  .mfa-fehler { color: #dc3545; font-weight: 600; font-size: 0.85rem; margin: 6px 0 0; }
+  .mfa-btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .mfa-btn { flex: 1; min-width: 140px; padding: 12px; background: #673ab7; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+  .mfa-btn:hover { background: #542f95; }
+  .mfa-btn.grau { background: #f1f1f1; color: #333; }
+  .mfa-btn.aus { background: #fff; color: #dc3545; border: 2px solid #dc3545; }
+  .totp-secret { background: #faf7ff; border: 1px dashed #b39ddb; border-radius: 10px; padding: 10px; margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+  .totp-secret code { font-size: 1.2rem; letter-spacing: 2px; color: #673ab7; font-weight: bold; }
+  .totp-uri { display: block; word-break: break-all; background: #f5f5f5; padding: 8px; border-radius: 8px; font-size: 0.75rem; color: #555; }
+
   .no-user { padding: 40px; background: #f9f9f9; border-radius: 12px; text-align: center; }
   .login-redirect-btn { display: inline-block; margin-top: 15px; padding: 10px 20px; background: #673ab7; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; }
 </style>

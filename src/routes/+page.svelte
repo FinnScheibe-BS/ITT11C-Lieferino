@@ -11,7 +11,11 @@
   // 🍽️ Zentrale Datenquelle: alle Restaurants kommen jetzt von hier.
   import { restaurants } from '$lib/data';
 
-  let eingeloggt = $state(false);
+  // 🔑 Anmelde-Status kommt jetzt zentral aus dem Auth-Store.
+  import { eingeloggt, login, hatKonto } from '$lib/stores/auth.js';
+
+  // Merkt sich, ob schon ein Konto existiert (dann zeigen wir "Willkommen zurück").
+  let kontoVorhanden = $state(false);
   let loginSchritt = $state(1);
 
   // Schritt 1
@@ -52,10 +56,9 @@
   let ortInput = $state("");
 
   onMount(() => {
-    const gespeicherterUser = localStorage.getItem("lieferino_user");
-    if (gespeicherterUser) {
-      eingeloggt = true;
-    }
+    // Anmelde-Status liefert der Auth-Store. Hier merken wir uns nur, ob bereits
+    // ein Konto existiert – dann zeigen wir den Login-Hinweis statt der Registrierung.
+    kontoVorhanden = hatKonto();
   });
 
   async function geheZuSchritt2(e) {
@@ -168,8 +171,8 @@
     // des Browsers. Das Backend muss hier später einen Endpunkt anbieten
     // (z.B. POST /api/auth/register), der den Nutzer in der Datenbank anlegt.
     localStorage.setItem("lieferino_user", JSON.stringify(userDaten));
-    eingeloggt = true;
-    window.location.reload();
+    // Nach der Registrierung gleich anmelden (Session setzen) – kein Reload nötig.
+    login();
   }
 
   // 🍽️ Restaurants kommen jetzt aus der zentralen Quelle (siehe $lib/data)
@@ -190,7 +193,18 @@
   );
 </script>
 
-{#if !eingeloggt}
+{#if !$eingeloggt && kontoVorhanden}
+  <!-- 🔑 Konto existiert, aber nicht eingeloggt: zum Login schicken -->
+  <div class="login-wrapper">
+    <div class="login-box">
+      <div class="hero-box compact-hero">
+        <h2>👋 Willkommen zurück!</h2>
+      </div>
+      <p>Du hast bereits ein Konto. Bitte melde dich an.</p>
+      <a href="/login" class="login-btn" style="display:block; text-align:center; text-decoration:none;">Zum Login 🔑</a>
+    </div>
+  </div>
+{:else if !$eingeloggt}
   <div class="login-wrapper">
     <div class="login-box">
       <!-- Hier ebenfalls das neue lila quadratische Banner für den Login -->
@@ -239,6 +253,7 @@
             Weiter zu deinen Details ➡️
           </button>
         </form>
+        <p class="login-hinweis">Schon registriert? <a href="/login">Hier einloggen 🔑</a></p>
 
       {:else if loginSchritt === 1 && zeigeVerifizierung}
         <!-- 📧 E-MAIL-VERIFIZIERUNG: Code eingeben, der per Mail kam -->
@@ -488,6 +503,8 @@
 
   /* Gesperrte Buttons (z.B. solange Passwort zu schwach oder Adresse geprüft wird) */
   .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .login-hinweis { text-align: center; font-size: 0.9rem; color: #777; margin-top: 14px; }
+  .login-hinweis a { color: #673ab7; font-weight: 600; }
 
   .button-row { display: flex; gap: 12px; margin-top: 15px; }
   .back-btn { padding: 14px; background: #f1f1f1; color: #333; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
