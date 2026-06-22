@@ -4,6 +4,7 @@
   import { generiereCode, sendeVerifizierungsEmail } from '$lib/services/email.js';
   import { pruefeTotp } from '$lib/services/mfa.js';
   import { login, loginStatus, registriereFehlversuch } from '$lib/stores/auth.js';
+  import { dev } from '$app/environment';
 
   // Ablauf: 'login' (E-Mail+Passwort) -> ggf. 'mfa' (zweiter Faktor) -> fertig.
   let schritt = $state('login');
@@ -169,6 +170,11 @@
         {#if mfaFehler}<p class="error-msg">{mfaFehler}</p>{/if}
         <button type="submit" class="login-btn">Bestätigen ✅</button>
       </form>
+
+      <!-- 🛠️ Nur im Entwicklungsmodus: 2FA überspringen -->
+      {#if dev}
+        <button type="button" class="dev-skip" onclick={einloggenFertig}>🛠️ Dev: überspringen</button>
+      {/if}
     {/if}
   </div>
 </div>
@@ -198,4 +204,5 @@
   .hinweis a { color: #673ab7; font-weight: 600; }
   .bleiben { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: #555; }
   .bleiben input { width: auto; }
+  .dev-skip { display: block; width: 100%; margin-top: 10px; padding: 10px; background: #fff3cd; color: #8a6d00; border: 1px dashed #ffc107; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
 </style>

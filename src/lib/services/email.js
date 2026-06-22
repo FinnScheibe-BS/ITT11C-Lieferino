@@ -1,65 +1,61 @@
 // =====================================================================
-// 📧 E-MAIL-SERVICE
-// Hier sind alle Funktionen rund um das Versenden von E-Mails gebündelt.
-// Aktuell läuft alles im Frontend (zum Testen). Der echte E-Mail-Versand
-// MUSS aber vom Backend übernommen werden (siehe große Hinweise unten).
+// 📧 E-MAIL-SERVICE (Frontend-Seite)
+// Erzeugt Codes und ruft die Server-Route /api/email auf, die die echte
+// E-Mail verschickt. Solange in der .env keine Gmail-Zugangsdaten stehen,
+// läuft alles im "Test-Modus": es wird nichts verschickt und der Code wird
+// in der App direkt angezeigt (damit man weiterkommt).
+//
+// 👉 Echten Versand aktivieren: siehe EMAIL-SETUP.md
 // =====================================================================
 
 // Erzeugt einen 6-stelligen Verifizierungscode als Text, z.B. "048213".
-// padStart(6, "0") sorgt dafür, dass auch kleine Zahlen 6 Stellen haben.
 export function generiereCode() {
   return Math.floor(Math.random() * 1000000)
     .toString()
     .padStart(6, '0');
 }
 
-// ---------------------------------------------------------------------
-// 🚨🚨🚨 ACHTUNG BACKEND-TEAM – HIER MUSS ETWAS GEBAUT WERDEN! 🚨🚨🚨
-// ---------------------------------------------------------------------
-// WAS PASSIERT JETZT (nur Test/Frontend):
-//   - Wir erzeugen den Code im Browser und geben ihn nur in der Konsole aus.
-//   - Es wird KEINE echte E-Mail verschickt.
-//
-// WAS DAS BACKEND BAUEN MUSS:
-//   1. Einen Endpunkt bereitstellen, z.B.  POST /api/email/verify-code
-//        Body: { "email": "kunde@gmail.com" }
-//   2. Im Backend einen Code erzeugen (NICHT im Frontend, sonst kann man
-//      ihn in den Entwicklertools auslesen!) und in der Datenbank speichern.
-//   3. Den Code per echtem Mailversand über das Gmail-Konto verschicken.
-//      Empfohlen: Nodemailer + Gmail SMTP  (smtp.gmail.com, Port 587)
-//      ODER die Gmail-API mit einem App-Passwort.
-//   4. Einen zweiten Endpunkt zum Prüfen, z.B.  POST /api/email/check-code
-//        Body: { "email": "...", "code": "048213" }
-//        Antwort: { "gueltig": true/false }
-//
-// Sobald der Endpunkt steht, hier nur noch den fetch() aktivieren:
-//
-//   await fetch('/api/email/verify-code', {
-//     method: 'POST',
-//     headers: { 'Content-Type': 'application/json' },
-//     body: JSON.stringify({ email })
-//   });
-// ---------------------------------------------------------------------
-export async function sendeVerifizierungsEmail(email, code) {
-  console.log(`📧 [TEST] Verifizierungscode für ${email}: ${code}`);
-  // Im Testbetrieb geben wir den Code zusätzlich zurück, damit die UI ihn
-  // anzeigen kann. SOBALD das Backend angebunden ist, wird hier nichts mehr
-  // zurückgegeben (der Nutzer bekommt den Code dann per echter E-Mail).
-  return { erfolg: true, testCode: code };
+// Ruft die Server-Route auf, die die Mail verschickt.
+// Gibt { gesendet, testModus? } zurück.
+async function sendeMail(an, betreff, text) {
+  try {
+    const antwort = await fetch('/api/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ an, betreff, text })
+    });
+    return await antwort.json();
+  } catch {
+    // Server nicht erreichbar -> Test-Modus.
+    return { gesendet: false, testModus: true };
+  }
 }
 
-// ---------------------------------------------------------------------
-// 🚨🚨🚨 ACHTUNG BACKEND-TEAM – AUCH HIER ANBINDUNG NÖTIG! 🚨🚨🚨
-// ---------------------------------------------------------------------
-// Diese Funktion soll später bei einer Bestellung eine Bestätigungs-Mail
-// mit Bestellhinweis und voraussichtlichem Liefertermin verschicken.
-//
-// WAS DAS BACKEND BAUEN MUSS:
-//   - Endpunkt z.B.  POST /api/email/order-confirmation
-//       Body: { "email": "...", "bestellung": {...}, "liefertermin": "..." }
-//   - Im Backend die echte E-Mail über das Gmail-Konto verschicken.
-// ---------------------------------------------------------------------
+// Verschickt den Verifizierungscode.
+// Im Test-Modus geben wir den Code als testCode zurück, damit die UI ihn
+// anzeigen kann. Bei echtem Versand bleibt testCode leer.
+export async function sendeVerifizierungsEmail(email, code) {
+  const ergebnis = await sendeMail(
+    email,
+    'Dein Lieferino-Verifizierungscode',
+    `Hallo!\n\nDein Verifizierungscode lautet: ${code}\n\nViele Grüße\nDein Lieferino-Team`
+  );
+  return {
+    erfolg: true,
+    testCode: ergebnis.gesendet ? '' : code,
+    testModus: !ergebnis.gesendet
+  };
+}
+
+// Verschickt eine Bestellbestätigung mit Liefertermin.
 export async function sendeBestellBestaetigung(email, bestellung, liefertermin) {
-  console.log(`📦 [TEST] Bestellbestätigung an ${email} – Liefertermin: ${liefertermin}`, bestellung);
+  const zeilen = (bestellung.artikel || [])
+    .map((a) => `- ${a.menge}x ${a.name}`)
+    .join('\n');
+  await sendeMail(
+    email,
+    'Deine Lieferino-Bestellung',
+    `Vielen Dank für deine Bestellung!\n\n${zeilen}\n\nSumme: ${bestellung.summe?.toFixed(2)}€\nVoraussichtliche Lieferung bis: ${liefertermin} Uhr\n\nGuten Appetit!\nDein Lieferino-Team`
+  );
   return { erfolg: true };
 }

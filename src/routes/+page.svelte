@@ -13,6 +13,8 @@
 
   // 🔑 Anmelde-Status kommt jetzt zentral aus dem Auth-Store.
   import { eingeloggt, login, hatKonto } from '$lib/stores/auth.js';
+  // 🛠️ dev ist true bei "npm run dev" – damit zeigen wir den Dev-Überspringen-Button.
+  import { dev } from '$app/environment';
 
   // Merkt sich, ob schon ein Konto existiert (dann zeigen wir "Willkommen zurück").
   let kontoVorhanden = $state(false);
@@ -299,6 +301,13 @@
         </form>
         <button type="button" class="link-btn" onclick={codeErneutSenden}>Code erneut senden 🔁</button>
 
+        <!-- 🛠️ Nur im Entwicklungsmodus: Verifizierung überspringen -->
+        {#if dev}
+          <button type="button" class="dev-skip" onclick={() => { zeigeVerifizierung = false; loginSchritt = 2; }}>
+            🛠️ Dev: überspringen
+          </button>
+        {/if}
+
       {:else if loginSchritt === 2}
         <p class="step-title">Schritt 2/3: Wer bist du?</p>
         <form onsubmit={geheZuSchritt3}>
@@ -520,6 +529,7 @@
   .login-hinweis { text-align: center; font-size: 0.9rem; color: #777; margin-top: 14px; }
   .login-hinweis a { color: #673ab7; font-weight: 600; }
   .such-input { padding: 11px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; width: 100%; box-sizing: border-box; }
+  .dev-skip { display: block; width: 100%; margin-top: 10px; padding: 10px; background: #fff3cd; color: #8a6d00; border: 1px dashed #ffc107; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
 
   .button-row { display: flex; gap: 12px; margin-top: 15px; }
   .back-btn { padding: 14px; background: #f1f1f1; color: #333; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }

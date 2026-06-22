@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { generiereCode, sendeVerifizierungsEmail } from '$lib/services/email.js';
   import { pruefePasswortStaerke } from '$lib/services/passwort.js';
+  import { dev } from '$app/environment';
 
   // Ablauf: 'email' -> 'code' -> 'neu' -> 'fertig'
   let schritt = $state('email');
@@ -81,6 +82,10 @@
         {#if fehler}<p class="fehler">{fehler}</p>{/if}
         <button type="submit">Code bestätigen</button>
       </form>
+      <!-- 🛠️ Nur im Entwicklungsmodus -->
+      {#if dev}
+        <button type="button" class="dev-skip" onclick={() => (schritt = 'neu')}>🛠️ Dev: überspringen</button>
+      {/if}
 
     {:else if schritt === 'neu'}
       <form onsubmit={passwortSpeichern}>
@@ -124,4 +129,5 @@
   .zurueck a { color: #673ab7; }
   .fertig { text-align: center; }
   .btn-link { display: inline-block; margin-top: 14px; background: #673ab7; color: white; text-decoration: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; }
+  .dev-skip { width: 100%; margin-top: 10px; padding: 10px; background: #fff3cd; color: #8a6d00; border: 1px dashed #ffc107; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
 </style>
