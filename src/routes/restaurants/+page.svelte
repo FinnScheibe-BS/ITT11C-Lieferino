@@ -1,6 +1,6 @@
 <script>
-  // 🍽️ Restaurants kommen jetzt aus der zentralen Quelle (siehe $lib/data).
-  import { restaurants } from '$lib/data';
+  // 🍽️ Aktive Restaurants (vom Admin gelöschte werden ausgeblendet).
+  import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen } from '$lib/stores/bewertungen.js';
 
@@ -21,7 +21,7 @@
   // $derived berechnet die gefilterte + sortierte Liste automatisch neu,
   // sobald sich Filter, Sortierung, Suchtext oder Favoriten ändern.
   let gefilterteRestaurants = $derived(
-    restaurants
+    $aktiveRestaurants
       .filter((r) => gewaehlterTyp === 'alle' || r.typ === gewaehlterTyp)
       // toLowerCase() macht die Suche groß-/kleinschreibungs-egal.
       .filter((r) => r.name.toLowerCase().includes(suche.toLowerCase()))
@@ -37,7 +37,7 @@
   );
 
   // Wir sammeln alle vorkommenden Küchen-Typen für das Dropdown (ohne Dopplungen).
-  let typen = [...new Set(restaurants.map((r) => r.typ))];
+  let typen = $derived([...new Set($aktiveRestaurants.map((r) => r.typ))]);
 
   // Herz-Klick: verhindert, dass der Link dahinter ausgelöst wird.
   function herzKlick(event, slug) {

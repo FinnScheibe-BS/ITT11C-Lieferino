@@ -33,6 +33,24 @@ export function bewertungHinzufuegen(slug, neueBewertung) {
   });
 }
 
+// 🗑️ Löscht eine Bewertung eines Restaurants (per Index in dessen Liste).
+export function bewertungLoeschen(slug, index) {
+  bewertungen.update((daten) => {
+    const liste = [...(daten[slug] || [])];
+    liste.splice(index, 1);
+    return { ...daten, [slug]: liste };
+  });
+}
+
+// ✏️ Bearbeitet Text und/oder Sterne einer Bewertung.
+export function bewertungBearbeiten(slug, index, patch) {
+  bewertungen.update((daten) => {
+    const liste = [...(daten[slug] || [])];
+    if (liste[index]) liste[index] = { ...liste[index], ...patch };
+    return { ...daten, [slug]: liste };
+  });
+}
+
 // 🚨 BACKEND-HINWEIS: Bewertungen liegen aktuell nur lokal im Browser.
 // Damit alle Nutzer dieselben Reviews sehen, muss das Backend sie speichern:
 //   POST /api/bewertungen   (neue Bewertung)

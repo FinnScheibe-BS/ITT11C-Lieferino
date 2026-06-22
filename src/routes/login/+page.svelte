@@ -49,6 +49,11 @@
       fehler = 'Kein Konto mit dieser E-Mail gefunden. 🤔';
       return;
     }
+    // 🚫 Gebannte Nutzer dürfen sich nicht einloggen.
+    if (user.gesperrt) {
+      fehler = 'Dieses Konto wurde gesperrt. Bitte wende dich an den Support. 🚫';
+      return;
+    }
     if (user.passwort !== passwort) {
       registriereFehlversuch();
       const s = loginStatus();

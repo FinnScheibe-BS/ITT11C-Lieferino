@@ -5,10 +5,12 @@
   import { zumWarenkorb } from '$lib/stores/cart.js';
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen, bewertungHinzufuegen } from '$lib/stores/bewertungen.js';
+  import { geloeschteLieferanten } from '$lib/stores/lieferanten.js';
 
   // Den Slug aus der URL holen (z.B. "luigis-pizzeria") und das Restaurant suchen.
+  // Vom Admin gelöschte Lieferanten behandeln wir wie "nicht gefunden".
   let slug = $derived($page.params.name);
-  let restaurant = $derived(getRestaurant(slug));
+  let restaurant = $derived($geloeschteLieferanten.includes(slug) ? undefined : getRestaurant(slug));
 
   // Frühere Bestellungen laden, um zu prüfen, ob man hier schon bestellt hat.
   let meineBestellungen = $state([]);

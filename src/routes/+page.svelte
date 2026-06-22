@@ -8,8 +8,8 @@
   import { pruefePasswortStaerke } from '$lib/services/passwort.js';
   import { pruefeAdresse } from '$lib/services/adresse.js';
 
-  // 🍽️ Zentrale Datenquelle: alle Restaurants kommen jetzt von hier.
-  import { restaurants } from '$lib/data';
+  // 🍽️ Aktive Restaurants (vom Admin gelöschte werden ausgeblendet).
+  import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
 
   // 🔑 Anmelde-Status kommt jetzt zentral aus dem Auth-Store.
   import { eingeloggt, login, hatKonto } from '$lib/stores/auth.js';
@@ -210,7 +210,7 @@
   let suche = $state(""); // 🔍 Suche auf der Startseite
 
   let gefilterteRestaurants = $derived(
-    restaurants.filter(r => {
+    $aktiveRestaurants.filter(r => {
       let typPasst = gewaehlterTyp === "alle" || r.typ === gewaehlterTyp;
       let preisPasst = r.minBestell <= maxMinBestellwert;
       let suchePasst = r.name.toLowerCase().includes(suche.toLowerCase());
@@ -219,7 +219,7 @@
   );
 
   let top10Restaurants = $derived(
-    [...restaurants].sort((a, b) => b.bewertung - a.bewertung).slice(0, 10)
+    [...$aktiveRestaurants].sort((a, b) => b.bewertung - a.bewertung).slice(0, 10)
   );
 </script>
 
