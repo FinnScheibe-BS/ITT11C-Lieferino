@@ -1,6 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-import { restaurants } from '$lib/data';
+import { restaurants, getRestaurant } from '$lib/data';
 
 // 🔌 AKTIV/DEAKTIVIERT-STATUS DER LIEFERANTEN
 // Die Basis-Restaurants kommen aus der (unveränderlichen) zentralen Quelle.
@@ -48,7 +48,52 @@ export function istAktiv(slug, deaktivierteListe) {
   return !deaktivierteListe.includes(slug);
 }
 
+// 🥚 GEHEIMES RESTAURANT – nur per Cheat-Code (in der Suche: „dragonpizza") sichtbar.
+const GEHEIMES_RESTAURANT = {
+  slug: 'drachen-grill',
+  name: '🐉 Drachen-Grill (geheim)',
+  typ: 'geheim',
+  emoji: '🐲',
+  bewertung: 5.0,
+  lieferzeit: '6-6 min',
+  minBestell: 0,
+  oeffnetUm: '00:00',
+  schliesstUm: '23:59',
+  beschreibung: 'Das legendäre Geheim-Restaurant. Nur für Eingeweihte. 🔥',
+  geheim: true,
+  speisekarte: [
+    { id: 1, name: 'Drachenpizza 🐉', preis: 6.66, beschreibung: 'Höllisch scharf', veg: false, allergene: ['Gluten'] },
+    { id: 2, name: 'Lava-Wings', preis: 9.99, beschreibung: 'Mit Geheimsauce', veg: false, allergene: [] },
+    { id: 3, name: 'Goldener Apfel', preis: 4.2, beschreibung: 'Gibt +2 Herzen ❤️', veg: true, allergene: [] }
+  ]
+};
+
+function ladeGeheim() {
+  if (!browser) return false;
+  return localStorage.getItem('lieferino_geheim') === 'true';
+}
+export const geheimFreigeschaltet = writable(ladeGeheim());
+if (browser) {
+  geheimFreigeschaltet.subscribe((v) => localStorage.setItem('lieferino_geheim', String(v)));
+}
+export function geheimFreischalten() {
+  geheimFreigeschaltet.set(true);
+}
+
 // Nur die AKTIVEN Restaurants – für alle öffentlichen Listen (normale Nutzer).
-export const aktiveRestaurants = derived(deaktivierteLieferanten, ($deaktiviert) =>
-  restaurants.filter((r) => !$deaktiviert.includes(r.slug))
+// Wenn das Geheim-Restaurant freigeschaltet ist, kommt es oben dazu.
+export const aktiveRestaurants = derived(
+  [deaktivierteLieferanten, geheimFreigeschaltet],
+  ([$deaktiviert, $geheim]) => {
+    const sichtbar = restaurants.filter((r) => !$deaktiviert.includes(r.slug));
+    return $geheim ? [GEHEIMES_RESTAURANT, ...sichtbar] : sichtbar;
+  }
 );
+
+// Sucht ein Restaurant per Slug/Name – inkl. dem Geheim-Restaurant.
+export function findeRestaurant(slugOderName) {
+  if (slugOderName === GEHEIMES_RESTAURANT.slug || slugOderName === GEHEIMES_RESTAURANT.name) {
+    return GEHEIMES_RESTAURANT;
+  }
+  return getRestaurant(slugOderName);
+}

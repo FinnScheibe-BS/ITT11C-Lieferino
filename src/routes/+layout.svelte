@@ -4,6 +4,7 @@
   import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
   import { onMount, onDestroy } from 'svelte';
   import Drachenlord from '$lib/Drachenlord.svelte';
+  import FunOverlay from '$lib/FunOverlay.svelte';
 
   // Die Asset-Dateien liegen in src/sets. Vite verwandelt diese Imports
   // automatisch in eine gültige URL, die im Browser geladen werden kann.
@@ -95,6 +96,8 @@
 
 <!-- 🐉 Verstecktes „Drachenlord"-Easter-Egg (global) -->
 <Drachenlord />
+<!-- 🎉 Fun-Modus (Emoji-Cursor + Saison-Effekt) -->
+<FunOverlay />
 
 <!-- 🎲 Overlay des Easter-Eggs. Liegt über allem (z-index sehr hoch). -->
 {#if zeigeJumpscare}

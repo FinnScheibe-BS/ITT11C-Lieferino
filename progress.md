@@ -11,7 +11,8 @@ mit großen `🚨`-Hinweisen markiert (dort steht jeweils, welcher Endpunkt gebr
   - **Passwort-Sicherheit**: Live-Stärke-Anzeige + Checkliste, „Weiter" erst ab sicherem Passwort.
   - **Namens-Check**: Vor-/Nachname min. 2 Buchstaben, keine Zahlen.
   - **Adress-Check** über OpenStreetMap + **PLZ-Format** (5 Ziffern).
-- **Account-Seite**: Daten bearbeiten, Konto löschen.
+- **Account-Seite**: Daten bearbeiten, **mehrere Adressen** verwalten,
+  **Treuepunkte** ansehen, Konto löschen.
 
 ## 🔐 Login & Sicherheit
 - **Echtes Login mit Session** (`/login`): „Angemeldet bleiben", Session-Timeout,
@@ -24,7 +25,8 @@ mit großen `🚨`-Hinweisen markiert (dort steht jeweils, welcher Endpunkt gebr
 ## 🍽️ Restaurants & Speisekarte
 - **Zentrale Datenquelle** unter `src/lib/data` (eine Quelle für alle Seiten).
 - **Restaurant-Liste** (`/restaurants`): Suche, Küchen-Filter, Sortierung,
-  **Favoriten-Filter**, **Vegetarisch-Filter**, Durchschnitts-Bewertung aus Reviews.
+  **Favoriten-Filter**, **Vegetarisch-Filter**, **„Jetzt geöffnet"-Filter**,
+  Durchschnitts-Bewertung aus Reviews.
 - **Detailseite**: echte Speisekarte mit **Mengen-Auswahl**, **Veggie-Tags & Allergenen**,
   **Öffnungszeiten** (geöffnet/geschlossen), Favoriten-Herz.
 - **Bewertungen**: nur möglich, wenn man dort **nachweislich bestellt** hat;
@@ -35,15 +37,28 @@ mit großen `🚨`-Hinweisen markiert (dort steht jeweils, welcher Endpunkt gebr
 - **Nach Restaurant gruppiert**, Mindestbestellwert-Check, bleibt nach Neuladen erhalten.
 
 ## 🧾 Checkout (`/checkout`)
-- Lieferadresse + **Karten-Vorschau** der Adresse.
+- Lieferadresse + **Karten-Vorschau** der Adresse, **Auswahl unter mehreren Adressen**.
+- **Lieferzeit**: sofort oder **geplant** (Uhrzeit wählen).
 - **Zahlungsarten**: PayPal, Barzahlung, **Kreditkarte mit Validierung**
   (Luhn-Prüfung, Ablaufdatum, CVV, Kartentyp-Erkennung).
 - **Trinkgeld** (0/5/10/15 %), **Gutscheincodes** (`LIEFERINO10`, `WILLKOMMEN5`, `GRATIS`).
+- **Treuepunkte einlösen** (100 Punkte = 5 € Rabatt).
 - **Bestellnummer**, voraussichtlicher **Liefertermin**, **Live-Lieferstatus**,
   **Browser-Benachrichtigung** bei Status-Wechsel, E-Mail-Bestätigung.
+- **Rechnung als PDF / zum Drucken**.
+
+## 🚚 Live-Tracking (`/tracking`)
+- Zeigt den Liefer-Fortschritt der letzten Bestellung (aktualisiert sich automatisch).
+
+## ⭐ Treuepunkte
+- 1 Punkt je 1 € Bestellwert; im Account sichtbar, im Checkout einlösbar.
+
+## 📍 Mehrere Adressen
+- Im Account verwaltbar (hinzufügen/löschen), im Checkout auswählbar.
 
 ## 📦 Bestellverlauf (`/bestellungen`)
-- Alle früheren Bestellungen mit Bestellnummer, **Detailansicht** und „🔁 Nochmal bestellen".
+- Alle früheren Bestellungen mit Bestellnummer, **Detailansicht**, „🔁 Nochmal bestellen",
+  **🚚 Verfolgen** (Live-Tracking) und **🧾 Rechnung** (PDF/Druck).
 
 ## 🛠️ Admin (`/admin`) — bleibt auf Deutsch
 - Durch einen **Sicherheitsschlüssel geschützt** (Passwort ist im Code hinterlegt – nicht hier dokumentiert).
@@ -72,6 +87,9 @@ mit großen `🚨`-Hinweisen markiert (dort steht jeweils, welcher Endpunkt gebr
 - **`pizzapizzapizza`** in die Suche → Konfetti + Geheim-Gutschein `PIZZAPARTY` (25 %).
 - **Geburtstag**: am Geburtstag (laut Konto) → Konfetti + Code `GEBURTSTAG` (20 %).
 - **Hero-Titel 10× klicken** → Konfetti-Überraschung.
+- **`foodcursor`** in die Suche → Emoji-Spur folgt der Maus (umschaltbar).
+- **`schnee`** / **`winter`** in die Suche → fallender Saison-Effekt (umschaltbar).
+- **`dragonpizza`** in die Suche → schaltet ein **geheimes Restaurant** frei.
 
 ---
 

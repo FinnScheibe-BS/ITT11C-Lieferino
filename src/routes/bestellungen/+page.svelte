@@ -9,6 +9,14 @@
 
   let bestellungen = $state([]);
   let offen = $state({}); // welche Bestellungen sind aufgeklappt?
+  let druckBestellung = $state(null); // Bestellung, die gerade gedruckt wird
+
+  // 🧾 Rechnung als PDF/Druck für eine bestimmte Bestellung.
+  function rechnungDrucken(bestellung) {
+    druckBestellung = bestellung;
+    // Kurz warten, damit die Druck-Ansicht gerendert ist, dann drucken.
+    setTimeout(() => window.print(), 50);
+  }
 
   onMount(() => {
     bestellungen = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
@@ -85,15 +93,53 @@
 
           <div class="fuss">
             <span class="zahlung">Bezahlt mit: {bestellung.zahlungsart}</span>
-            <button class="btn klein" onclick={() => nochmalBestellen(bestellung)}>🔁 Nochmal bestellen</button>
+            <div class="fuss-btns">
+              <a href="/tracking" class="btn klein sekundaer">🚚 Verfolgen</a>
+              <button class="btn klein sekundaer" onclick={() => rechnungDrucken(bestellung)}>🧾 Rechnung</button>
+              <button class="btn klein" onclick={() => nochmalBestellen(bestellung)}>🔁 Nochmal bestellen</button>
+            </div>
           </div>
         </div>
       {/each}
     </div>
   {/if}
+
+  <!-- 🧾 Druckbare Rechnung (nur beim Drucken/PDF sichtbar) -->
+  {#if druckBestellung}
+    <div class="rechnung-druck">
+      <h2>Lieferino – Rechnung</h2>
+      <p>Bestellnummer: {druckBestellung.nummer || '—'}<br />
+        Datum: {formatiere(druckBestellung.datum)}<br />
+        Liefertermin: {druckBestellung.liefertermin} Uhr</p>
+      <table>
+        <tbody>
+          {#each druckBestellung.artikel as a}
+            <tr><td>{a.menge}× {a.name}</td><td>{(a.preis * a.menge).toFixed(2)}€</td></tr>
+          {/each}
+          {#if druckBestellung.trinkgeld > 0}<tr><td>Trinkgeld</td><td>{druckBestellung.trinkgeld.toFixed(2)}€</td></tr>{/if}
+          <tr class="r-gesamt"><td>Gesamt</td><td>{druckBestellung.summe.toFixed(2)}€</td></tr>
+        </tbody>
+      </table>
+      <p>Bezahlt mit: {druckBestellung.zahlungsart}</p>
+      <p>Vielen Dank für deine Bestellung! 🍕</p>
+    </div>
+  {/if}
 </div>
 
 <style>
+  /* 🧾 Druckbare Rechnung: am Bildschirm versteckt, nur beim Drucken sichtbar */
+  .rechnung-druck { display: none; }
+  @media print {
+    :global(body *) { visibility: hidden !important; }
+    .rechnung-druck, .rechnung-druck * { visibility: visible !important; }
+    .rechnung-druck { display: block; position: absolute; top: 0; left: 0; width: 100%; padding: 20px; font-family: sans-serif; color: #000; }
+    .rechnung-druck table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    .rechnung-druck td { padding: 4px 0; border-bottom: 1px solid #eee; }
+    .rechnung-druck .r-gesamt td { font-weight: bold; border-top: 2px solid #000; border-bottom: none; }
+  }
+
+  .fuss-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn.sekundaer { background: #f1f1f1; color: #333; }
   .seite { max-width: 760px; margin: 0 auto; padding: 20px; font-family: sans-serif; }
   h1 { margin-bottom: 20px; }
 

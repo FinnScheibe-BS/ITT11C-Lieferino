@@ -20,6 +20,8 @@
   // 🥚 Easter Eggs
   import { drachenlordAusloesen } from '$lib/stores/easteregg.js';
   import { konfetti, eierToast } from '$lib/confetti.js';
+  import { toggleEmojiCursor, toggleSaison } from '$lib/stores/funmodus.js';
+  import { geheimFreischalten } from '$lib/stores/lieferanten.js';
 
   // Merkt sich, ob schon ein Konto existiert (dann zeigen wir "Willkommen zurück").
   let kontoVorhanden = $state(false);
@@ -88,6 +90,15 @@
     } else if (s === 'pizzapizzapizza') {
       konfetti({ anzahl: 120, dauer: 3000, emojis: ['🍕'] });
       eierToast('🍕 Geheimcode entdeckt! Nutze PIZZAPARTY für 25% Rabatt 🎉');
+    } else if (s === 'foodcursor') {
+      toggleEmojiCursor();
+      eierToast('🖱️ Emoji-Cursor umgeschaltet!');
+    } else if (s === 'schnee' || s === 'winter') {
+      toggleSaison();
+      eierToast('❄️ Saison-Effekt umgeschaltet!');
+    } else if (s === 'dragonpizza') {
+      geheimFreischalten();
+      eierToast('🐲 Geheimes Restaurant freigeschaltet! Schau in die Restaurant-Liste 🔥');
     }
   });
 

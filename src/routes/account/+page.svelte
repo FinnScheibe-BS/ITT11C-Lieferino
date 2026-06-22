@@ -3,6 +3,7 @@
   // 🔐 MFA-Funktionen
   import { generiereSecret, otpauthUri, pruefeTotp, generiereBackupCodes } from '$lib/services/mfa.js';
   import { eingeloggt, logout } from '$lib/stores/auth.js';
+  import { treuepunkte } from '$lib/stores/treue.js';
 
   let user = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
   let geladen = $state(false);
@@ -32,10 +33,38 @@
       Object.keys(user).forEach(key => {
         inputs[key] = user[key] || "";
       });
-      inputs.passwort = ""; 
+      inputs.passwort = "";
+
+      // 📍 Adressen initialisieren: falls noch keine Liste existiert, die
+      // Registrierungs-Adresse als erste Adresse ("Zuhause") übernehmen.
+      if (!user.adressen || user.adressen.length === 0) {
+        user.adressen = [
+          { label: 'Zuhause', strasse: user.strasse, hausnummer: user.hausnummer, plz: user.plz, ort: user.ort }
+        ];
+        localStorage.setItem('lieferino_user', JSON.stringify(user));
+      }
+
       geladen = true;
     }
   });
+
+  // 📍 Eingabefelder für eine neue Adresse
+  let neueAdresse = $state({ label: '', strasse: '', hausnummer: '', plz: '', ort: '' });
+
+  function adresseHinzufuegen(e) {
+    e.preventDefault();
+    // Minimal-Validierung: PLZ = 5 Ziffern, Felder nicht leer.
+    if (!/^\d{5}$/.test(neueAdresse.plz.trim())) return;
+    if (!neueAdresse.strasse.trim() || !neueAdresse.ort.trim()) return;
+    user.adressen = [...user.adressen, { ...neueAdresse, label: neueAdresse.label || 'Adresse' }];
+    localStorage.setItem('lieferino_user', JSON.stringify(user));
+    neueAdresse = { label: '', strasse: '', hausnummer: '', plz: '', ort: '' };
+  }
+
+  function adresseLoeschen(index) {
+    user.adressen = user.adressen.filter((_, i) => i !== index);
+    localStorage.setItem('lieferino_user', JSON.stringify(user));
+  }
 
   // Speichert alle Felder einer bestimmten Gruppe
   function bereichSpeichern(bereich, felder) {
@@ -256,6 +285,45 @@
         {/if}
       </div>
 
+      <!-- ⭐ TREUEPUNKTE -->
+      <div class="category-section">
+        <div class="category-header">
+          <h3 class="category-title">⭐ Treuepunkte</h3>
+        </div>
+        <p class="punkte-zahl">{$treuepunkte} Punkte</p>
+        <p class="punkte-hint">Sammle 1 Punkt je 1€ Bestellwert. 100 Punkte = 5€ Rabatt im Checkout.</p>
+      </div>
+
+      <!-- 📍 WEITERE ADRESSEN -->
+      <div class="category-section">
+        <div class="category-header">
+          <h3 class="category-title">📍 Meine Adressen</h3>
+        </div>
+
+        {#each user.adressen || [] as adr, i}
+          <div class="adress-eintrag">
+            <span><strong>{adr.label}</strong>: {adr.strasse} {adr.hausnummer}, {adr.plz} {adr.ort}</span>
+            {#if (user.adressen || []).length > 1}
+              <button class="adr-loeschen" onclick={() => adresseLoeschen(i)} aria-label="Adresse löschen">🗑️</button>
+            {/if}
+          </div>
+        {/each}
+
+        <!-- Neue Adresse hinzufügen -->
+        <form class="adress-form" onsubmit={adresseHinzufuegen}>
+          <input type="text" placeholder="Bezeichnung (z.B. Arbeit)" bind:value={neueAdresse.label} />
+          <div class="adr-row">
+            <input type="text" placeholder="Straße" bind:value={neueAdresse.strasse} required />
+            <input type="text" placeholder="Nr." bind:value={neueAdresse.hausnummer} required />
+          </div>
+          <div class="adr-row">
+            <input type="text" placeholder="PLZ" bind:value={neueAdresse.plz} required />
+            <input type="text" placeholder="Ort" bind:value={neueAdresse.ort} required />
+          </div>
+          <button type="submit" class="save-group-btn">➕ Adresse hinzufügen</button>
+        </form>
+      </div>
+
       <!-- 🔐 ZWEI-FAKTOR-AUTHENTIFIZIERUNG -->
       <div class="category-section">
         <div class="category-header">
@@ -400,6 +468,18 @@
   .backup-titel { font-weight: bold; color: #8a6d00; margin: 0 0 4px; }
   .backup-codes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
   .backup-codes code { background: #fff; border: 1px solid #eee; border-radius: 6px; padding: 6px; text-align: center; font-weight: bold; letter-spacing: 1px; color: #673ab7; }
+
+  /* ⭐ Treuepunkte */
+  .punkte-zahl { font-size: 1.6rem; font-weight: 800; color: #673ab7; margin: 0; }
+  .punkte-hint { font-size: 0.85rem; color: #888; margin: 4px 0 0; }
+
+  /* 📍 Adressen */
+  .adress-eintrag { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; }
+  .adr-loeschen { background: none; border: none; cursor: pointer; font-size: 1rem; }
+  .adress-form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .adress-form input { padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+  .adr-row { display: flex; gap: 8px; }
+  .adr-row input { flex: 1; min-width: 0; }
 
   /* 🗑️ Konto löschen */
   .delete-btn { padding: 12px; background: none; color: #999; border: 1px solid #ddd; border-radius: 12px; font-weight: 600; cursor: pointer; }

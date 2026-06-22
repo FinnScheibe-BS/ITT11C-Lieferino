@@ -1,16 +1,15 @@
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { getRestaurant } from '$lib/data';
   import { zumWarenkorb } from '$lib/stores/cart.js';
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen, bewertungHinzufuegen } from '$lib/stores/bewertungen.js';
-  import { deaktivierteLieferanten } from '$lib/stores/lieferanten.js';
+  import { deaktivierteLieferanten, findeRestaurant } from '$lib/stores/lieferanten.js';
 
-  // Den Slug aus der URL holen (z.B. "luigis-pizzeria") und das Restaurant suchen.
+  // Den Slug aus der URL holen und das Restaurant suchen (inkl. Geheim-Restaurant).
   // Deaktivierte Lieferanten behandeln wir für normale Nutzer wie "nicht gefunden".
   let slug = $derived($page.params.name);
-  let restaurant = $derived($deaktivierteLieferanten.includes(slug) ? undefined : getRestaurant(slug));
+  let restaurant = $derived($deaktivierteLieferanten.includes(slug) ? undefined : findeRestaurant(slug));
 
   // Frühere Bestellungen laden, um zu prüfen, ob man hier schon bestellt hat.
   let meineBestellungen = $state([]);

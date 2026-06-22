@@ -7,6 +7,9 @@
   // 🥚 Easter Eggs
   import { drachenlordAusloesen } from '$lib/stores/easteregg.js';
   import { konfetti, eierToast } from '$lib/confetti.js';
+  import { istGeoeffnet } from '$lib/oeffnung.js';
+  import { toggleEmojiCursor, toggleSaison } from '$lib/stores/funmodus.js';
+  import { geheimFreischalten } from '$lib/stores/lieferanten.js';
 
   // 🥚 Suche überwacht versteckte Codewörter.
   $effect(() => {
@@ -16,6 +19,15 @@
     } else if (s === 'pizzapizzapizza') {
       konfetti({ anzahl: 120, dauer: 3000, emojis: ['🍕'] });
       eierToast('🍕 Geheimcode entdeckt! Nutze PIZZAPARTY für 25% Rabatt 🎉');
+    } else if (s === 'foodcursor') {
+      toggleEmojiCursor();
+      eierToast('🖱️ Emoji-Cursor umgeschaltet!');
+    } else if (s === 'schnee' || s === 'winter') {
+      toggleSaison();
+      eierToast('❄️ Saison-Effekt umgeschaltet!');
+    } else if (s === 'dragonpizza') {
+      geheimFreischalten();
+      eierToast('🐲 Geheimes Restaurant freigeschaltet! 🔥');
     }
   });
 
@@ -25,6 +37,7 @@
   let suche = $state(''); // 🔍 Freitext-Suche nach Name
   let nurFavoriten = $state(false); // ❤️ Nur Favoriten anzeigen?
   let nurVeg = $state(false); // 🌱 Nur Restaurants mit vegetarischen Gerichten?
+  let nurGeoeffnet = $state(false); // 🟢 Nur aktuell geöffnete?
 
   // ⭐ Anzeige-Bewertung: Durchschnitt aus Kundenreviews, sonst Basis-Wert.
   function anzeigeBewertung(r) {
@@ -44,6 +57,8 @@
       .filter((r) => !nurFavoriten || $favoriten.includes(r.slug))
       // Veggie-Filter: nur Restaurants mit mindestens einem vegetarischen Gericht.
       .filter((r) => !nurVeg || r.speisekarte.some((g) => g.veg))
+      // Geöffnet-Filter: nur aktuell geöffnete Restaurants.
+      .filter((r) => !nurGeoeffnet || istGeoeffnet(r))
       .sort((a, b) => {
         if (sortierung === 'bewertung') return anzeigeBewertung(b) - anzeigeBewertung(a);
         if (sortierung === 'minbestell-auf') return a.minBestell - b.minBestell;
@@ -94,6 +109,11 @@
     <button class="fav-filter veg" class:aktiv={nurVeg} onclick={() => (nurVeg = !nurVeg)}>
       {$t('rest.veg')}
     </button>
+
+    <!-- 🟢 Umschalter: nur aktuell geöffnete -->
+    <button class="fav-filter offen" class:aktiv={nurGeoeffnet} onclick={() => (nurGeoeffnet = !nurGeoeffnet)}>
+      🟢 Jetzt geöffnet
+    </button>
   </div>
 
   <!-- Treffer-Anzahl -->
@@ -138,6 +158,7 @@
   .fav-filter { padding: 11px 16px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; font-size: 0.95rem; }
   .fav-filter.aktiv { border-color: #e0245e; background: #fff0f5; }
   .fav-filter.veg.aktiv { border-color: #2e7d32; background: #e8f5e9; }
+  .fav-filter.offen.aktiv { border-color: #2e9e4f; background: #e8f7ed; }
   .herz { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.85); border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 1.1rem; cursor: pointer; }
 
   .treffer { color: #777; font-size: 0.9rem; margin: 0 0 16px; }

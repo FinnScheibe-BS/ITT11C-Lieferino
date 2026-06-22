@@ -3,6 +3,7 @@
   import { warenkorb, gesamtSumme, leereWarenkorb } from '$lib/stores/cart.js';
   import { sendeBestellBestaetigung } from '$lib/services/email.js';
   import { pruefeKarte, kartenTyp, formatiereNummer } from '$lib/services/payment.js';
+  import { treuepunkte, punkteSammeln, punkteAbziehen, EINLOESE_SCHRITT, EINLOESE_WERT } from '$lib/stores/treue.js';
 
   const LIEFERGEBUEHR = 2.49;
 
@@ -31,13 +32,35 @@
   // Lieferadresse + E-Mail laden wir aus den gespeicherten Nutzerdaten.
   let user = $state(null);
 
-  // 🗺️ Karten-Vorschau der Lieferadresse (eingebettete Karte).
+  // 🏠 Adresswahl: Nutzer kann mehrere Adressen haben (user.adressen).
+  // Fallback: die einzelnen Felder aus der Registrierung.
+  let gewaehlteAdresse = $state(0);
+  let adressen = $derived(
+    user?.adressen?.length
+      ? user.adressen
+      : user
+        ? [{ label: 'Standard', strasse: user.strasse, hausnummer: user.hausnummer, plz: user.plz, ort: user.ort }]
+        : []
+  );
+  let aktiveAdresse = $derived(adressen[gewaehlteAdresse] || adressen[0] || null);
+
+  // 🗺️ Karten-Vorschau der gewählten Lieferadresse.
   let kartenUrl = $derived(
-    user
+    aktiveAdresse
       ? `https://maps.google.com/maps?q=${encodeURIComponent(
-          `${user.strasse} ${user.hausnummer}, ${user.plz} ${user.ort}`
+          `${aktiveAdresse.strasse} ${aktiveAdresse.hausnummer}, ${aktiveAdresse.plz} ${aktiveAdresse.ort}`
         )}&z=15&output=embed`
       : ''
+  );
+
+  // ⏰ Geplante Lieferung: 'asap' (so schnell wie möglich) oder 'geplant'.
+  let lieferOption = $state('asap');
+  let geplanteZeit = $state(''); // Format "HH:MM"
+
+  // ⭐ Treuepunkte einlösen?
+  let punkteEinloesen = $state(false);
+  let punkteRabatt = $derived(
+    punkteEinloesen && $treuepunkte >= EINLOESE_SCHRITT ? EINLOESE_WERT : 0
   );
 
   // Nach dem Abschicken zeigen wir eine Erfolgsmeldung statt des Formulars.
@@ -79,11 +102,18 @@
     return 0;
   });
 
-  // Endsumme = Zwischensumme − Rabatt + Lieferkosten + Trinkgeld (nie unter 0).
-  let endsumme = $derived(Math.max(0, $gesamtSumme - rabatt + lieferkosten + trinkgeld));
+  // Endsumme = Zwischensumme − Rabatt − Punkte-Rabatt + Lieferkosten + Trinkgeld (nie unter 0).
+  let endsumme = $derived(Math.max(0, $gesamtSumme - rabatt - punkteRabatt + lieferkosten + trinkgeld));
 
   // Eindeutige Bestellnummer (wird beim Abschicken erzeugt).
   let bestellnummer = $state('');
+  // Die abgeschlossene Bestellung (für die Rechnung – der Warenkorb wird ja geleert).
+  let letzteBestellung = $state(null);
+
+  // 🧾 Rechnung als PDF: öffnet den Druck-Dialog (dort „Als PDF speichern").
+  function rechnungDrucken() {
+    window.print();
+  }
 
   // 🚚 LIVE-LIEFERSTATUS: Die Bestellung durchläuft mehrere Phasen.
   const STATUS_PHASEN = ['Bestellung erhalten', 'Wird zubereitet', 'Unterwegs', 'Geliefert'];
@@ -118,11 +148,13 @@
     }, 3000);
   }
 
-  // Berechnet einen voraussichtlichen Liefertermin: jetzt + ca. 40 Minuten.
+  // Berechnet den Liefertermin: bei "geplant" die gewählte Zeit, sonst jetzt + 40 Min.
   function berechneLiefertermin() {
+    if (lieferOption === 'geplant' && geplanteZeit) {
+      return geplanteZeit; // bereits Format "HH:MM"
+    }
     const jetzt = new Date();
     jetzt.setMinutes(jetzt.getMinutes() + 40);
-    // Schöne Uhrzeit im Format HH:MM.
     return jetzt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   }
 
@@ -133,6 +165,11 @@
       if (!kartePruefung.gueltig) {
         return; // Fehler werden im Formular angezeigt – nicht weiter.
       }
+    }
+
+    // ⏰ Bei geplanter Lieferung muss eine Zeit gewählt sein.
+    if (lieferOption === 'geplant' && !geplanteZeit) {
+      return;
     }
 
     liefertermin = berechneLiefertermin();
@@ -159,11 +196,20 @@
       summe: endsumme,
       gutschein: aktiverGutschein?.code || null,
       zahlungsart,
-      liefertermin
+      liefertermin,
+      geplant: lieferOption === 'geplant',
+      adresse: aktiveAdresse
     };
     const verlauf = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
     verlauf.unshift(bestellung);
     localStorage.setItem('lieferino_bestellungen', JSON.stringify(verlauf));
+
+    // Für die Rechnung merken (der Warenkorb wird gleich geleert).
+    letzteBestellung = bestellung;
+
+    // ⭐ Treuepunkte: ggf. eingelöste Punkte abziehen, dann neue Punkte sammeln.
+    if (punkteRabatt > 0) punkteAbziehen(EINLOESE_SCHRITT);
+    punkteSammeln(endsumme);
 
     // E-Mail-Bestätigung anstoßen (echter Versand erfolgt später übers Backend).
     if (user?.email) {
@@ -203,9 +249,36 @@
       {#if user?.email}
         <p class="mail-info">📧 Eine Bestätigung wurde an {user.email} geschickt.</p>
       {/if}
-      <a href="/bestellungen" class="btn sekundaer">Meine Bestellungen</a>
+      <button class="btn sekundaer" onclick={rechnungDrucken}>🧾 Rechnung (PDF / Drucken)</button>
+      <a href="/tracking" class="btn sekundaer">🚚 Bestellung verfolgen</a>
       <a href="/" class="btn">Zurück zur Startseite</a>
     </div>
+
+    <!-- 🧾 Druckbare Rechnung (nur beim Drucken/PDF sichtbar) -->
+    {#if letzteBestellung}
+      <div class="rechnung-druck">
+        <h2>Lieferino – Rechnung</h2>
+        <p>Bestellnummer: {letzteBestellung.nummer}<br />
+          Datum: {new Date(letzteBestellung.datum).toLocaleString('de-DE')}<br />
+          Liefertermin: {letzteBestellung.liefertermin} Uhr</p>
+        {#if letzteBestellung.adresse}
+          <p>Lieferadresse:<br />
+            {user?.vorname} {user?.nachname}<br />
+            {letzteBestellung.adresse.strasse} {letzteBestellung.adresse.hausnummer}, {letzteBestellung.adresse.plz} {letzteBestellung.adresse.ort}</p>
+        {/if}
+        <table>
+          <tbody>
+            {#each letzteBestellung.artikel as a}
+              <tr><td>{a.menge}× {a.name}</td><td>{(a.preis * a.menge).toFixed(2)}€</td></tr>
+            {/each}
+            {#if letzteBestellung.trinkgeld > 0}<tr><td>Trinkgeld</td><td>{letzteBestellung.trinkgeld.toFixed(2)}€</td></tr>{/if}
+            <tr class="r-gesamt"><td>Gesamt</td><td>{letzteBestellung.summe.toFixed(2)}€</td></tr>
+          </tbody>
+        </table>
+        <p>Bezahlt mit: {letzteBestellung.zahlungsart}</p>
+        <p>Vielen Dank für deine Bestellung! 🍕</p>
+      </div>
+    {/if}
   {:else if $warenkorb.length === 0}
     <!-- Kein Inhalt zum Bestellen -->
     <div class="leer">
@@ -219,16 +292,41 @@
     <!-- 🏠 Lieferadresse -->
     <section class="block">
       <h2>Lieferadresse</h2>
-      {#if user}
+      {#if aktiveAdresse}
+        <!-- Auswahl, falls mehrere Adressen vorhanden sind -->
+        {#if adressen.length > 1}
+          <select bind:value={gewaehlteAdresse} class="adress-wahl">
+            {#each adressen as a, i}
+              <option value={i}>{a.label ? a.label + ': ' : ''}{a.strasse} {a.hausnummer}, {a.plz} {a.ort}</option>
+            {/each}
+          </select>
+        {/if}
         <p>
           {user.vorname} {user.nachname}<br />
-          {user.strasse} {user.hausnummer}<br />
-          {user.plz} {user.ort}
+          {aktiveAdresse.strasse} {aktiveAdresse.hausnummer}<br />
+          {aktiveAdresse.plz} {aktiveAdresse.ort}
         </p>
         <!-- 🗺️ Karten-Vorschau der Lieferadresse -->
         <iframe class="karte-vorschau" src={kartenUrl} title="Lieferadresse auf der Karte" loading="lazy"></iframe>
       {:else}
         <p class="warnung">⚠️ Keine Adresse gefunden. Bitte zuerst registrieren.</p>
+      {/if}
+    </section>
+
+    <!-- ⏰ Lieferzeit -->
+    <section class="block">
+      <h2>Lieferzeit</h2>
+      <div class="zeit-optionen">
+        <label class:aktiv={lieferOption === 'asap'}>
+          <input type="radio" bind:group={lieferOption} value="asap" /> 🚀 So schnell wie möglich
+        </label>
+        <label class:aktiv={lieferOption === 'geplant'}>
+          <input type="radio" bind:group={lieferOption} value="geplant" /> 🕒 Zu einer bestimmten Uhrzeit
+        </label>
+      </div>
+      {#if lieferOption === 'geplant'}
+        <input type="time" bind:value={geplanteZeit} class="zeit-feld" />
+        {#if !geplanteZeit}<p class="warnung">Bitte eine Uhrzeit wählen.</p>{/if}
       {/if}
     </section>
 
@@ -307,6 +405,20 @@
       <p class="gutschein-tipp">💡 Versuch's mal mit <strong>LIEFERINO10</strong>, <strong>WILLKOMMEN5</strong> oder <strong>GRATIS</strong>.</p>
     </section>
 
+    <!-- ⭐ Treuepunkte -->
+    <section class="block">
+      <h2>Treuepunkte ⭐</h2>
+      <p class="punkte-stand">Du hast <strong>{$treuepunkte}</strong> Punkte.</p>
+      {#if $treuepunkte >= EINLOESE_SCHRITT}
+        <label class="punkte-einloesen">
+          <input type="checkbox" bind:checked={punkteEinloesen} />
+          {EINLOESE_SCHRITT} Punkte einlösen (−{EINLOESE_WERT.toFixed(2)}€)
+        </label>
+      {:else}
+        <p class="gutschein-tipp">Ab {EINLOESE_SCHRITT} Punkten kannst du {EINLOESE_WERT}€ Rabatt einlösen. (1 Punkt je 1€ Bestellwert)</p>
+      {/if}
+    </section>
+
     <!-- 📦 Bestellübersicht -->
     <section class="block">
       <h2>Deine Bestellung</h2>
@@ -325,6 +437,12 @@
         <div class="uebersicht-zeile rabatt">
           <span>Rabatt ({aktiverGutschein.code})</span>
           <span>−{rabatt.toFixed(2)}€</span>
+        </div>
+      {/if}
+      {#if punkteRabatt > 0}
+        <div class="uebersicht-zeile rabatt">
+          <span>Treuepunkte ({EINLOESE_SCHRITT})</span>
+          <span>−{punkteRabatt.toFixed(2)}€</span>
         </div>
       {/if}
       <div class="uebersicht-zeile">
@@ -388,6 +506,29 @@
 
   .bestellnr { font-size: 1rem; color: #555; margin: 4px 0; }
   .bestellnr strong { color: #673ab7; letter-spacing: 1px; }
+
+  /* ⏰ Lieferzeit + Adresswahl */
+  .zeit-optionen { display: flex; flex-direction: column; gap: 10px; }
+  .zeit-optionen label { border: 1px solid #ddd; border-radius: 12px; padding: 12px; cursor: pointer; }
+  .zeit-optionen label.aktiv { border-color: #673ab7; background: #faf7ff; }
+  .zeit-feld { margin-top: 12px; padding: 11px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; }
+  .adress-wahl { width: 100%; padding: 11px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 12px; }
+
+  /* ⭐ Treuepunkte */
+  .punkte-stand { color: #555; }
+  .punkte-einloesen { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #673ab7; cursor: pointer; }
+
+  /* 🧾 Druckbare Rechnung: am Bildschirm versteckt, nur beim Drucken sichtbar */
+  .rechnung-druck { display: none; }
+  @media print {
+    /* Beim Drucken alles ausblenden außer der Rechnung */
+    :global(body *) { visibility: hidden !important; }
+    .rechnung-druck, .rechnung-druck * { visibility: visible !important; }
+    .rechnung-druck { display: block; position: absolute; top: 0; left: 0; width: 100%; padding: 20px; font-family: sans-serif; color: #000; }
+    .rechnung-druck table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    .rechnung-druck td { padding: 4px 0; border-bottom: 1px solid #eee; }
+    .rechnung-druck .r-gesamt td { font-weight: bold; border-top: 2px solid #000; border-bottom: none; }
+  }
 
   .erfolg, .leer { text-align: center; padding: 40px 20px; }
   .erfolg .liefertermin { font-size: 1.1rem; margin: 16px 0; }
