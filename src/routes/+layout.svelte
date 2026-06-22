@@ -143,37 +143,81 @@
 
   /* =====================================================================
      🌙 DARK-MODE
-     Wir setzen die Farben global, sobald am <html> data-theme="dark" steht
-     (das macht der Theme-Store). :global(...) ist nötig, weil diese Elemente
-     außerhalb dieser Komponente liegen.
+     Sobald am <html> data-theme="dark" steht (das macht der Theme-Store),
+     ziehen sich diese Farben durch ALLE Seiten. :global(...) ist nötig, weil
+     die Elemente außerhalb dieser Layout-Komponente liegen. !important sorgt
+     dafür, dass wir die seiteneigenen (hellen) Styles sicher übersteuern.
      ===================================================================== */
-  :global(html[data-theme='dark']) {
-    background: #1a1a1f;
-  }
+
+  /* Grundfläche: Hintergrund + Standard-Textfarbe */
+  :global(html[data-theme='dark']),
   :global(html[data-theme='dark'] body) {
-    background: #1a1a1f;
-    color: #e8e8ea;
+    background: #16161b !important;
+    color: #e8e8ea !important;
   }
-  /* Helle Karten/Boxen im Dark-Mode abdunkeln */
+  :global(html[data-theme='dark'] .page-content) {
+    background: #16161b;
+  }
+
+  /* Helle Karten/Boxen/Flächen abdunkeln (Klassen aus allen Seiten) */
   :global(html[data-theme='dark'] .login-box),
   :global(html[data-theme='dark'] .karte),
+  :global(html[data-theme='dark'] .restaurant-card),
+  :global(html[data-theme='dark'] .netflix-card),
   :global(html[data-theme='dark'] .zeile),
   :global(html[data-theme='dark'] .block),
-  :global(html[data-theme='dark'] .gericht) {
-    background: #26262e !important;
+  :global(html[data-theme='dark'] .gericht),
+  :global(html[data-theme='dark'] .review),
+  :global(html[data-theme='dark'] .review-form),
+  :global(html[data-theme='dark'] .bestellung),
+  :global(html[data-theme='dark'] .tabelle),
+  :global(html[data-theme='dark'] .fav-filter) {
+    background: #24242c !important;
     border-color: #3a3a44 !important;
-    color: #e8e8ea;
+    color: #e8e8ea !important;
   }
-  :global(html[data-theme='dark'] .zusammenfassung) {
-    background: #222229 !important;
+
+  /* Leicht abgesetzte Flächen (Zusammenfassung, Kopfbereiche, Tabellenkopf) */
+  :global(html[data-theme='dark'] .zusammenfassung),
+  :global(html[data-theme='dark'] .kopf),
+  :global(html[data-theme='dark'] .zeile.kopf),
+  :global(html[data-theme='dark'] .filter-bar) {
+    background: #1e1e25 !important;
     border-color: #3a3a44 !important;
   }
-  /* Eingabefelder im Dark-Mode */
+
+  /* Überschriften + Standardtext hell halten */
+  :global(html[data-theme='dark'] h1),
+  :global(html[data-theme='dark'] h2),
+  :global(html[data-theme='dark'] h3),
+  :global(html[data-theme='dark'] h4),
+  :global(html[data-theme='dark'] .seite),
+  :global(html[data-theme='dark'] .welcome-container),
+  :global(html[data-theme='dark'] .gesamt),
+  :global(html[data-theme='dark'] .zwischensumme),
+  :global(html[data-theme='dark'] .rechnung-zeile.gesamt) {
+    color: #f1f1f4 !important;
+  }
+
+  /* Eingabefelder + Buttons mit hellem Hintergrund */
   :global(html[data-theme='dark'] input),
-  :global(html[data-theme='dark'] select) {
+  :global(html[data-theme='dark'] select),
+  :global(html[data-theme='dark'] textarea) {
     background: #2e2e38 !important;
     color: #e8e8ea !important;
     border-color: #44444f !important;
+  }
+
+  /* Helle "Chips"/Tags lesbar machen */
+  :global(html[data-theme='dark'] .tag),
+  :global(html[data-theme='dark'] .chip) {
+    background: #3a2f4d !important;
+    color: #d3bdf0 !important;
+  }
+
+  /* Emoji-Platzhalter etwas dunkler tönen */
+  :global(html[data-theme='dark'] .emoji-bild) {
+    background: linear-gradient(135deg, #2a2333, #1f1b29) !important;
   }
 
   /* 🎲 EASTER-EGG OVERLAY: deckt den kompletten Bildschirm ab */
