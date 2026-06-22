@@ -1,6 +1,7 @@
 <script>
   import { warenkorb } from '$lib/stores/cart.js';
   import { theme, themeWechseln } from '$lib/stores/theme.js';
+  import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
   import { onMount, onDestroy } from 'svelte';
 
   // Die Asset-Dateien liegen in src/sets. Vite verwandelt diese Imports
@@ -91,18 +92,32 @@
     <div class="button-umrundung"></div>
 
     <div class="nav-links-wrapper">
-      <a href="/">🏠 Home</a>
-      <a href="/restaurants">🍔 Restaurants</a>
+      <a href="/">{$t('nav.home')}</a>
+      <a href="/restaurants">{$t('nav.restaurants')}</a>
       <a href="/cart" class="cart-link">
-        🛒 Warenkorb
+        {$t('nav.cart')}
         {#if anzahl > 0}
           <span class="cart-badge">{anzahl}</span>
         {/if}
       </a>
-      <a href="/bestellungen">🧾 Bestellungen</a>
-      <a href="/account">👤 Account</a>
-      <a href="/login">🔑 Login</a>
-      <a href="/admin">🛠️ Admin</a>
+      <a href="/bestellungen">{$t('nav.orders')}</a>
+      <a href="/account">{$t('nav.account')}</a>
+      <a href="/login">{$t('nav.login')}</a>
+      <a href="/admin">{$t('nav.admin')}</a>
+
+      <!-- 🌍 Sprach-Umschalter (mit Icon der aktuellen Sprache davor) -->
+      <div class="sprach-wahl">
+        {#each SPRACHEN as s}
+          {#if s.code === $sprache && s.icon}
+            <img src={s.icon} alt="" class="sprach-icon" />
+          {/if}
+        {/each}
+        <select value={$sprache} onchange={(e) => setzeSprache(e.target.value)} aria-label="Sprache wählen">
+          {#each SPRACHEN as s}
+            <option value={s.code}>{s.flag} {s.label}</option>
+          {/each}
+        </select>
+      </div>
 
       <div class="nav-impressum">
         <h4>Impressum</h4>
@@ -122,6 +137,23 @@
 </div>
 
 <style>
+  /* 🌍 Sprach-Umschalter im Menü */
+  .sprach-wahl { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+  .sprach-wahl select { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #ccc; font-size: 0.9rem; cursor: pointer; }
+  .sprach-icon { width: 26px; height: 26px; object-fit: contain; border-radius: 4px; image-rendering: pixelated; }
+
+  /* 🟪 Minecraft-Verzauberungstisch (Standard Galactic Alphabet)
+     Die Schrift-Datei muss unter static/fonts/enchantment.ttf liegen.
+     Fehlt sie, fällt der Text einfach auf normale (englische) Schrift zurück. */
+  @font-face {
+    font-family: 'Enchanting';
+    src: url('/fonts/enchantment.ttf') format('truetype');
+    font-display: swap;
+  }
+  :global(html[data-sga='true'] body) {
+    font-family: 'Enchanting', sans-serif;
+  }
+
   /* 🌙/☀️ Theme-Schalter: runder Button unten links */
   .theme-switch {
     position: fixed;

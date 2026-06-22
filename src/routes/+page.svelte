@@ -15,6 +15,8 @@
   import { eingeloggt, login, hatKonto } from '$lib/stores/auth.js';
   // 🛠️ dev ist true bei "npm run dev" – damit zeigen wir den Dev-Überspringen-Button.
   import { dev } from '$app/environment';
+  // 🌍 Übersetzungen
+  import { t } from '$lib/i18n.js';
 
   // Merkt sich, ob schon ein Konto existiert (dann zeigen wir "Willkommen zurück").
   let kontoVorhanden = $state(false);
@@ -426,22 +428,21 @@
     
     <!-- 🟪 LILA HERO-QUADRAT 🟪 -->
     <div class="hero-box">
-      <h1>Willkommen bei Lieferino</h1>
-      <p>Dein Lieblingsessen, nur wenige Klicks entfernt 🍕</p>
+      <h1>{$t('home.hero_title')}</h1>
+      <p>{$t('home.hero_sub')}</p>
     </div>
 
     <!-- 🔍 Suchleiste -->
     <div class="filter-group" style="margin-bottom: 16px;">
-      <label for="suche">Suche:</label>
-      <input id="suche" type="search" placeholder="🔍 Restaurant suchen…" bind:value={suche} class="such-input" />
+      <input id="suche" type="search" placeholder={$t('common.search_placeholder')} bind:value={suche} class="such-input" />
     </div>
 
     <!-- Filter-Bar -->
     <div class="filter-bar">
       <div class="filter-group">
-        <label for="kueche">Essensart:</label>
+        <label for="kueche">{$t('home.cuisine_label')}</label>
         <select id="kueche" bind:value={gewaehlterTyp}>
-          <option value="alle">🌍 Alle Küchen</option>
+          <option value="alle">{$t('common.all_cuisines')}</option>
           <option value="italienisch">🍕 Italienisch</option>
           <option value="spanisch">🥘 Spanisch</option>
           <option value="amerikanisch">🍔 Amerikanisch</option>
@@ -451,7 +452,7 @@
       </div>
 
       <div class="filter-group">
-        <label for="mindest">Max. Mindestbestellwert: <strong>{maxMinBestellwert}€</strong></label>
+        <label for="mindest">{$t('home.min_order_label')} <strong>{maxMinBestellwert}€</strong></label>
         <input type="range" id="mindest" min="5" max="30" step="5" bind:value={maxMinBestellwert} />
       </div>
     </div>
@@ -459,8 +460,8 @@
     <!-- ⭐ TOP 10 NETFLIX SCROLLER -->
     {#if gewaehlterTyp === "alle"}
       <div class="section-title">
-        <h2>⭐ Unsere Top 10 Restaurants</h2>
-        <p class="subtitle">Live nach euren Bewertungen sortiert</p>
+        <h2>{$t('home.top10_title')}</h2>
+        <p class="subtitle">{$t('home.top10_sub')}</p>
       </div>
       
       <div class="netflix-scroll-container">
@@ -475,7 +476,7 @@
             <p class="desc">{restaurant.beschreibung}</p>
             <div class="card-footer">
               <span class="tag">{restaurant.typ}</span>
-              <span class="min-order">Min: {restaurant.minBestell}€</span>
+              <span class="min-order">{$t('common.min')}: {restaurant.minBestell}€</span>
             </div>
           </a>
         {/each}
@@ -484,7 +485,7 @@
 
     <!-- Alle Restaurants -->
     <div class="section-title scroll-section">
-      <h2>🔍 Alle Restaurants entdecken</h2>
+      <h2>{$t('home.discover')}</h2>
     </div>
 
     <div class="restaurant-grid">

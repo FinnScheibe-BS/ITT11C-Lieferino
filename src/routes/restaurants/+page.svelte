@@ -3,6 +3,7 @@
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen } from '$lib/stores/bewertungen.js';
+  import { t } from '$lib/i18n.js';
 
   // Variablen, die sich ändern können, bekommen ein $state().
   let gewaehlterTyp = $state('alle');
@@ -49,40 +50,40 @@
 
 <div class="seite">
   <div class="hero-box">
-    <h1>🍔 Alle Restaurants</h1>
-    <p>Stöbere durch unsere Auswahl und finde dein Lieblingsessen</p>
+    <h1>{$t('rest.title')}</h1>
+    <p>{$t('rest.subtitle')}</p>
   </div>
 
   <!-- 🔍 Such- und Filterleiste -->
   <div class="filter-bar">
-    <input type="search" placeholder="🔍 Restaurant suchen…" bind:value={suche} class="suchfeld" />
+    <input type="search" placeholder={$t('common.search_placeholder')} bind:value={suche} class="suchfeld" />
 
     <select bind:value={gewaehlterTyp}>
-      <option value="alle">🌍 Alle Küchen</option>
+      <option value="alle">{$t('common.all_cuisines')}</option>
       {#each typen as typ}
         <option value={typ}>{typ}</option>
       {/each}
     </select>
 
     <select bind:value={sortierung}>
-      <option value="standard">Sortierung: Standard</option>
-      <option value="bewertung">Beste Bewertung</option>
-      <option value="minbestell-auf">Niedrigster Mindestbestellwert</option>
+      <option value="standard">{$t('rest.sort_standard')}</option>
+      <option value="bewertung">{$t('rest.sort_rating')}</option>
+      <option value="minbestell-auf">{$t('rest.sort_minorder')}</option>
     </select>
 
     <!-- ❤️ Umschalter: nur Favoriten anzeigen -->
     <button class="fav-filter" class:aktiv={nurFavoriten} onclick={() => (nurFavoriten = !nurFavoriten)}>
-      {nurFavoriten ? '❤️ Nur Favoriten' : '🤍 Alle'}
+      {nurFavoriten ? $t('rest.only_favs') : $t('rest.all')}
     </button>
 
     <!-- 🌱 Umschalter: nur mit vegetarischen Gerichten -->
     <button class="fav-filter veg" class:aktiv={nurVeg} onclick={() => (nurVeg = !nurVeg)}>
-      🌱 Vegetarisch
+      {$t('rest.veg')}
     </button>
   </div>
 
   <!-- Treffer-Anzahl -->
-  <p class="treffer">{gefilterteRestaurants.length} Restaurant(s) gefunden</p>
+  <p class="treffer">{$t('rest.found').replace('{n}', gefilterteRestaurants.length)}</p>
 
   <div class="grid">
     {#each gefilterteRestaurants as r}
@@ -107,7 +108,7 @@
 
   <!-- Falls die Suche/der Filter nichts findet -->
   {#if gefilterteRestaurants.length === 0}
-    <p class="leer">😕 Keine Restaurants gefunden. Versuche einen anderen Filter.</p>
+    <p class="leer">{$t('rest.none')}</p>
   {/if}
 </div>
 
