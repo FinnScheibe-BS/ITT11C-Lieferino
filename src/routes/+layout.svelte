@@ -1,6 +1,6 @@
 <script>import "../app.css";
-//rt 'geist-svelte/font/sans';
-//port 'geist-svelte/font/mono';
+import 'geist-svelte/font/sans';
+import 'geist-svelte/font/mono';
 import { warenkorb } from '$lib/stores/cart.js';
 import { theme, themeWechseln } from '$lib/stores/theme.js';
 import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
