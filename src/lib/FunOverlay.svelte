@@ -1,6 +1,6 @@
 <script>
   import { emojiCursor, saison } from '$lib/stores/funmodus.js';
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
 
   const CURSOR_EMOJIS = ['🍕', '🍔', '🌮', '🍣', '🍟', '🥗'];
   const SAISON_EMOJIS = ['❄️', '🍂', '⭐', '✨'];
@@ -25,10 +25,10 @@
     setTimeout(() => el.remove(), 850);
   }
 
-  onMount(() => window.addEventListener('mousemove', maus));
-  onDestroy(() => {
-    if (typeof window !== 'undefined') window.removeEventListener('mousemove', maus);
-  });
+ onMount(() => {
+  window.addEventListener('mousemove', maus);
+  return () => window.removeEventListener('mousemove', maus);
+});
 
   // Feste Anzahl fallender Teilchen für den Saison-Effekt.
   const teilchen = Array.from({ length: 28 }, (_, i) => ({

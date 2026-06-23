@@ -1,8 +1,11 @@
 <script>import "../app.css";
+//rt 'geist-svelte/font/sans';
+//port 'geist-svelte/font/mono';
 import { warenkorb } from '$lib/stores/cart.js';
 import { theme, themeWechseln } from '$lib/stores/theme.js';
 import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
-import { onMount, onDestroy } from 'svelte';
+import { onMount } from 'svelte';  // onDestroy entfernen
+import { browser } from '$app/environment';
 import Drachenlord from '$lib/Drachenlord.svelte';
 import FunOverlay from '$lib/FunOverlay.svelte';
 
@@ -13,7 +16,7 @@ import jumpscareSound from '../sets/myinstants.mp3';
 
 // Der '?' Operator sorgt dafür: Wenn warenkorb undefined ist,
 // stürzt es nicht ab, sondern gibt 0 zurück.
-let anzahl = $derived($warenkorb?.length ?? 0);
+let anzahl = $state(0);
 
 // =====================================================================
 // 🎲 EASTER-EGG / "JUMPSCARE" 🎲
@@ -82,16 +85,17 @@ function konamiTaste(e) {
 }
 
 onMount(() => {
-  // Timer starten, sobald die Seite geladen ist.
+  const unsub = warenkorb.subscribe(v => anzahl = v?.length ?? 0);
   tickInterval = setInterval(tick, TICK_DAUER_MS);
   window.addEventListener('keydown', konamiTaste);
+  return () => {
+    unsub();
+    clearInterval(tickInterval);
+    window.removeEventListener('keydown', konamiTaste);
+  };
 });
 
-onDestroy(() => {
-  // Timer wieder aufräumen, damit er nicht im Hintergrund weiterläuft.
-  clearInterval(tickInterval);
-  if (typeof window !== 'undefined') window.removeEventListener('keydown', konamiTaste);
-});</script>
+</script>
 
 <!-- 🐉 Verstecktes „Drachenlord"-Easter-Egg (global) -->
 <Drachenlord></Drachenlord>
@@ -140,7 +144,7 @@ onDestroy(() => {
             <img src="{s.icon}" alt class="sprach-icon" />
           {/if}
         {/each}
-        <select value="{$sprache}" onchange="{(e)" => setzeSprache(e.target.value)} aria-label="Sprache wählen">
+        <select value={$sprache} onchange={(e) => setzeSprache(e.target.value)} aria-label="Sprache wählen">
           {#each SPRACHEN as s}
             <option value="{s.code}">{s.flag} {s.label}</option>
           {/each}
