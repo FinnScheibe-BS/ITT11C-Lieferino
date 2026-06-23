@@ -151,7 +151,7 @@ const woerterbuch = {
     'home.hero_sub': 'たった数回のクリックで、お気に入りの料理が楽しめます。 🍕',
     'home.cuisine_label': '料理ジャンル:',
     'home.min_order_label': '最低注文金額（上限）:',
-    'home.top10_title': '⭐ 人気レストラン トップ10',
+    'home.top10_title': '⭐ 人気ランキングトップ10の店',
     'home.top10_sub': '評価に基くリアルタイムの並べ替え',
     'home.discover': '🔍 すべての料理屋を見る',
     'common.all_cuisines': '🌍 すべての料理',
