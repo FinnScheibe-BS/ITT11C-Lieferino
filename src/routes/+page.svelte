@@ -517,7 +517,7 @@
       <div class="netflix-scroll-container">
         {#each top10Restaurants as restaurant, index}
           <a href="/restaurant/{restaurant.slug}" class="netflix-card">
-            <div class="rank-number">#{index + 1}</div>
+            <div class="rank-number">{index + 1}</div>
             <div class="image-placeholder emoji-bild">
               <span class="emoji-gross">{restaurant.emoji}</span>
               <span class="rating-badge">⭐ {restaurant.bewertung}</span>
@@ -646,7 +646,25 @@
   .restaurant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 30px; padding: 0 20px; margin-bottom: 40px; }
   .restaurant-card { flex: none; }
   
-  .rank-number { position: absolute; top: -15px; left: -10px; font-size: 3.5rem; font-weight: 900; color: #673ab7; text-shadow: 2px 2px 0px white, 4px 4px 10px rgba(0,0,0,0.15); z-index: 10; }
+  .rank-number {
+    position: absolute;
+    top: -22px;
+    left: -14px;
+    font-size: 6rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -4px;
+    z-index: 10;
+    font-family: sans-serif;
+    user-select: none;
+    background: linear-gradient(160deg, #e879f9 0%, #a855f7 45%, #6d28d9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter:
+      drop-shadow(0 6px 16px rgba(103, 58, 183, 0.40))
+      drop-shadow(0 1px 3px rgba(0, 0, 0, 0.20));
+  }
   .image-placeholder { width: 100%; height: 150px; border-radius: 12px; overflow: hidden; position: relative; }
   .image-placeholder img { width: 100%; height: 100%; object-fit: cover; }
   /* 🍽️ Emoji-Variante statt echtem Bild */
