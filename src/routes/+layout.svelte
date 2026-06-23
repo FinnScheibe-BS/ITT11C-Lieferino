@@ -1,112 +1,111 @@
-<script>
-  import { warenkorb } from '$lib/stores/cart.js';
-  import { theme, themeWechseln } from '$lib/stores/theme.js';
-  import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
-  import { onMount, onDestroy } from 'svelte';
-  import Drachenlord from '$lib/Drachenlord.svelte';
-  import FunOverlay from '$lib/FunOverlay.svelte';
+<script>import "../app.css";
+import { warenkorb } from '$lib/stores/cart.js';
+import { theme, themeWechseln } from '$lib/stores/theme.js';
+import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
+import { onMount, onDestroy } from 'svelte';
+import Drachenlord from '$lib/Drachenlord.svelte';
+import FunOverlay from '$lib/FunOverlay.svelte';
 
-  // Die Asset-Dateien liegen in src/sets. Vite verwandelt diese Imports
-  // automatisch in eine gültige URL, die im Browser geladen werden kann.
-  import jumpscareGif from '../sets/44b67d5e479d46f672031fb9ee0229cf.gif';
-  import jumpscareSound from '../sets/myinstants.mp3';
+// Die Asset-Dateien liegen in src/sets. Vite verwandelt diese Imports
+// automatisch in eine gültige URL, die im Browser geladen werden kann.
+import jumpscareGif from '../sets/44b67d5e479d46f672031fb9ee0229cf.gif';
+import jumpscareSound from '../sets/myinstants.mp3';
 
-  // Der '?' Operator sorgt dafür: Wenn warenkorb undefined ist,
-  // stürzt es nicht ab, sondern gibt 0 zurück.
-  let anzahl = $derived($warenkorb?.length ?? 0);
+// Der '?' Operator sorgt dafür: Wenn warenkorb undefined ist,
+// stürzt es nicht ab, sondern gibt 0 zurück.
+let anzahl = $derived($warenkorb?.length ?? 0);
 
-  // =====================================================================
-  // 🎲 EASTER-EGG / "JUMPSCARE" 🎲
-  // Solange man auf der Seite ist, läuft ein "Tick". Bei JEDEM Tick gibt es
-  // eine 1-zu-10000-Chance, dass das GIF zusammen mit dem Sound abgespielt wird.
-  // Weil das hier im +layout.svelte steckt, läuft es auf JEDER Unterseite mit.
-  // =====================================================================
+// =====================================================================
+// 🎲 EASTER-EGG / "JUMPSCARE" 🎲
+// Solange man auf der Seite ist, läuft ein "Tick". Bei JEDEM Tick gibt es
+// eine 1-zu-10000-Chance, dass das GIF zusammen mit dem Sound abgespielt wird.
+// Weil das hier im +layout.svelte steckt, läuft es auf JEDER Unterseite mit.
+// =====================================================================
 
-  // Wie oft ein Tick passiert (in Millisekunden). 1000 = ein Tick pro Sekunde.
-  // Diesen Wert kann man kleiner machen, damit das Easter-Egg häufiger "würfelt".
-  const TICK_DAUER_MS = 1000;
+// Wie oft ein Tick passiert (in Millisekunden). 1000 = ein Tick pro Sekunde.
+// Diesen Wert kann man kleiner machen, damit das Easter-Egg häufiger "würfelt".
+const TICK_DAUER_MS = 1000;
 
-  // Die Chance: 1 von 10000 pro Tick.
-  const CHANCE = 10000;
+// Die Chance: 1 von 10000 pro Tick.
+const CHANCE = 10000;
 
-  let zeigeJumpscare = $state(false);   // Steuert das Anzeigen des Overlays
-  let tickInterval;                     // Merkt sich den Timer, damit wir ihn stoppen können
-  let audioElement;                     // Verweis auf das <audio>-Element im HTML
+let zeigeJumpscare = $state(false);   // Steuert das Anzeigen des Overlays
+let tickInterval;                     // Merkt sich den Timer, damit wir ihn stoppen können
+let audioElement;                     // Verweis auf das <audio>-Element im HTML
 
-  // Wird bei jedem Tick aufgerufen und "würfelt".
-  function tick() {
-    // Math.random() gibt eine Zahl zwischen 0 und 1. Mal CHANCE und abgerundet
-    // ergibt das eine Zufallszahl von 0 bis CHANCE-1. Genau eine davon (die 0)
-    // löst den Jumpscare aus -> exakt 1-zu-10000-Chance.
-    const wuerfel = Math.floor(Math.random() * CHANCE);
-    if (wuerfel === 0) {
-      loeseJumpscareAus();
-    }
+// Wird bei jedem Tick aufgerufen und "würfelt".
+function tick() {
+  // Math.random() gibt eine Zahl zwischen 0 und 1. Mal CHANCE und abgerundet
+  // ergibt das eine Zufallszahl von 0 bis CHANCE-1. Genau eine davon (die 0)
+  // löst den Jumpscare aus -> exakt 1-zu-10000-Chance.
+  const wuerfel = Math.floor(Math.random() * CHANCE);
+  if (wuerfel === 0) {
+    loeseJumpscareAus();
+  }
+}
+
+function loeseJumpscareAus() {
+  zeigeJumpscare = true;
+
+  // Sound von vorne starten und abspielen.
+  if (audioElement) {
+    audioElement.currentTime = 0;
+    // .play() kann vom Browser blockiert werden, wenn der Nutzer die Seite
+    // noch nie angeklickt hat. Mit .catch() verhindern wir einen Absturz.
+    audioElement.play().catch(() => {});
   }
 
-  function loeseJumpscareAus() {
-    zeigeJumpscare = true;
+  // Nach 4 Sekunden blenden wir das Overlay automatisch wieder aus.
+  setTimeout(() => {
+    zeigeJumpscare = false;
+  }, 4000);
+}
 
-    // Sound von vorne starten und abspielen.
-    if (audioElement) {
-      audioElement.currentTime = 0;
-      // .play() kann vom Browser blockiert werden, wenn der Nutzer die Seite
-      // noch nie angeklickt hat. Mit .catch() verhindern wir einen Absturz.
-      audioElement.play().catch(() => {});
+// 🎮 KONAMI-CODE: ↑ ↑ ↓ ↓ ← → ← → B A  → löst den Jumpscare aus.
+const KONAMI = [
+  'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+  'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'
+];
+let konamiFortschritt = 0;
+function konamiTaste(e) {
+  const taste = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (taste === KONAMI[konamiFortschritt]) {
+    konamiFortschritt += 1;
+    if (konamiFortschritt === KONAMI.length) {
+      konamiFortschritt = 0;
+      loeseJumpscareAus(); // 😈 Überraschung!
     }
-
-    // Nach 4 Sekunden blenden wir das Overlay automatisch wieder aus.
-    setTimeout(() => {
-      zeigeJumpscare = false;
-    }, 4000);
+  } else {
+    // Bei falscher Taste von vorne (außer es ist der erste Schritt).
+    konamiFortschritt = taste === KONAMI[0] ? 1 : 0;
   }
+}
 
-  // 🎮 KONAMI-CODE: ↑ ↑ ↓ ↓ ← → ← → B A  → löst den Jumpscare aus.
-  const KONAMI = [
-    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
-    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'
-  ];
-  let konamiFortschritt = 0;
-  function konamiTaste(e) {
-    const taste = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (taste === KONAMI[konamiFortschritt]) {
-      konamiFortschritt += 1;
-      if (konamiFortschritt === KONAMI.length) {
-        konamiFortschritt = 0;
-        loeseJumpscareAus(); // 😈 Überraschung!
-      }
-    } else {
-      // Bei falscher Taste von vorne (außer es ist der erste Schritt).
-      konamiFortschritt = taste === KONAMI[0] ? 1 : 0;
-    }
-  }
+onMount(() => {
+  // Timer starten, sobald die Seite geladen ist.
+  tickInterval = setInterval(tick, TICK_DAUER_MS);
+  window.addEventListener('keydown', konamiTaste);
+});
 
-  onMount(() => {
-    // Timer starten, sobald die Seite geladen ist.
-    tickInterval = setInterval(tick, TICK_DAUER_MS);
-    window.addEventListener('keydown', konamiTaste);
-  });
-
-  onDestroy(() => {
-    // Timer wieder aufräumen, damit er nicht im Hintergrund weiterläuft.
-    clearInterval(tickInterval);
-    if (typeof window !== 'undefined') window.removeEventListener('keydown', konamiTaste);
-  });
-</script>
+onDestroy(() => {
+  // Timer wieder aufräumen, damit er nicht im Hintergrund weiterläuft.
+  clearInterval(tickInterval);
+  if (typeof window !== 'undefined') window.removeEventListener('keydown', konamiTaste);
+});</script>
 
 <!-- 🐉 Verstecktes „Drachenlord"-Easter-Egg (global) -->
-<Drachenlord />
+<Drachenlord></Drachenlord>
 <!-- 🎉 Fun-Modus (Emoji-Cursor + Saison-Effekt) -->
-<FunOverlay />
+<FunOverlay></FunOverlay>
 
 <!-- 🎲 Overlay des Easter-Eggs. Liegt über allem (z-index sehr hoch). -->
 {#if zeigeJumpscare}
   <div class="jumpscare-overlay">
-    <img src={jumpscareGif} alt="" class="jumpscare-gif" />
+    <img src="{jumpscareGif}" alt class="jumpscare-gif" />
   </div>
 {/if}
 <!-- Audio-Element ist immer im DOM, wird aber nur bei Bedarf abgespielt. -->
-<audio bind:this={audioElement} src={jumpscareSound} preload="auto"></audio>
+<audio bind:this="{audioElement}" src="{jumpscareSound}" preload="auto"></audio>
 
 <div class="nav-container">
   <input type="checkbox" id="menu-toggle" class="menu-checkbox" />
@@ -138,31 +137,31 @@
       <div class="sprach-wahl">
         {#each SPRACHEN as s}
           {#if s.code === $sprache && s.icon}
-            <img src={s.icon} alt="" class="sprach-icon" />
+            <img src="{s.icon}" alt class="sprach-icon" />
           {/if}
         {/each}
-        <select value={$sprache} onchange={(e) => setzeSprache(e.target.value)} aria-label="Sprache wählen">
+        <select value="{$sprache}" onchange="{(e)" => setzeSprache(e.target.value)} aria-label="Sprache wählen">
           {#each SPRACHEN as s}
-            <option value={s.code}>{s.flag} {s.label}</option>
+            <option value="{s.code}">{s.flag} {s.label}</option>
           {/each}
         </select>
       </div>
 
       <div class="nav-impressum">
         <h4>Impressum</h4>
-        <p>Lieferino GmbH<br>Musterstraße 12<br>12345 Stadt</p>
+        <p>Lieferino GmbH<br />Musterstraße 12<br />12345 Stadt</p>
       </div>
     </div>
   </div>
 </div>
 
 <!-- 🌙/☀️ Dark-/Light-Mode-Schalter: fest unten links auf JEDER Seite -->
-<button class="theme-switch" onclick={themeWechseln} title="Hell/Dunkel umschalten" aria-label="Hell/Dunkel umschalten">
+<button class="theme-switch" onclick="{themeWechseln}" title="Hell/Dunkel umschalten" aria-label="Hell/Dunkel umschalten">
   {$theme === 'dark' ? '☀️' : '🌙'}
 </button>
 
 <div class="page-content">
-  <slot />
+  <slot></slot>
 </div>
 
 <style>
