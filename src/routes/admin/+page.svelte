@@ -11,7 +11,7 @@
 
   let bestellungen = $state([]);
 
-  // 🔐 Sicherheitsschlüssel (im Klartext gewünscht – nur Schein-Schutz, siehe Hinweis).
+  // 🔐 Sicherheitsschlüssel (im Klartext – nur Schein-Schutz, siehe Hinweis).
   const ADMIN_KEY = 'Lieferino#2026_DevOps';
   let entsperrt = $state(false);
   let schluesselEingabe = $state('');
