@@ -4,6 +4,7 @@
   import { generiereSecret, otpauthUri, pruefeTotp, generiereBackupCodes } from '$lib/services/mfa.js';
   import { eingeloggt, logout } from '$lib/stores/auth.js';
   import { treuepunkte } from '$lib/stores/treue.js';
+  import { api, getToken } from '$lib/api.js';
 
   let user = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
   let geladen = $state(false);
@@ -25,7 +26,7 @@
   // Temporäre Inputs für die Bearbeitung
   let inputs = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
 
-  onMount(() => {
+  onMount(async () => {
     const gespeicherterUser = localStorage.getItem("lieferino_user");
     if (gespeicherterUser) {
       user = JSON.parse(gespeicherterUser);
@@ -46,7 +47,34 @@
 
       geladen = true;
     }
+
+    // 🗄️ Falls eingeloggt: aktuelle Daten aus dem Backend (DB) holen und übernehmen.
+    if (getToken()) {
+      const res = await api('/api/me');
+      if (res.ok && res.daten) {
+        // Backend ist die Quelle der Wahrheit für Profil + Adressen.
+        user = { ...user, ...res.daten, passwort: user.passwort };
+        if (res.daten.adressen?.length) user.adressen = res.daten.adressen;
+        Object.keys(inputs).forEach((key) => { if (user[key] != null) inputs[key] = user[key]; });
+        inputs.passwort = "";
+        localStorage.setItem('lieferino_user', JSON.stringify(user));
+        geladen = true;
+      }
+    }
   });
+
+  // 🗄️ Speichert Profil + Adressen ins Backend (DB), wenn eingeloggt.
+  async function backendSync() {
+    if (!getToken()) return;
+    await api('/api/me', {
+      method: 'PUT',
+      body: {
+        username: user.username, vorname: user.vorname,
+        nachname: user.nachname, geburtsdatum: user.geburtsdatum || '',
+        adressen: user.adressen || []
+      }
+    });
+  }
 
   // 📍 Eingabefelder für eine neue Adresse
   let neueAdresse = $state({ label: '', strasse: '', hausnummer: '', plz: '', ort: '' });
@@ -59,11 +87,13 @@
     user.adressen = [...user.adressen, { ...neueAdresse, label: neueAdresse.label || 'Adresse' }];
     localStorage.setItem('lieferino_user', JSON.stringify(user));
     neueAdresse = { label: '', strasse: '', hausnummer: '', plz: '', ort: '' };
+    backendSync();
   }
 
   function adresseLoeschen(index) {
     user.adressen = user.adressen.filter((_, i) => i !== index);
     localStorage.setItem('lieferino_user', JSON.stringify(user));
+    backendSync();
   }
 
   // Speichert alle Felder einer bestimmten Gruppe
@@ -81,6 +111,7 @@
     localStorage.setItem("lieferino_user", JSON.stringify(user));
     editBereich[bereich] = false; // Bearbeitungsmodus schließen
     if (felder.includes('passwort')) inputs.passwort = ""; // Passwort-Feld leeren
+    backendSync(); // 🗄️ Änderungen auch ins Backend (DB)
   }
 
   // 🔓 Ausloggen beendet nur die Session – das Konto bleibt erhalten!

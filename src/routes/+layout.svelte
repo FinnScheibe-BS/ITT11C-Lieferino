@@ -5,6 +5,8 @@
   import { warenkorb } from '$lib/stores/cart.js';
   import { theme, themeWechseln } from '$lib/stores/theme.js';
   import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
+  import { eingeloggt, logout } from '$lib/stores/auth.js';
+  import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import Drachenlord from '$lib/Drachenlord.svelte';
@@ -53,6 +55,13 @@
   }
 
   function menuSchliessen() { menuOffen = false; }
+
+  // 🔓 Logout: beendet die Session (Konto bleibt) und geht zur Startseite.
+  function ausloggen() {
+    logout();
+    menuSchliessen();
+    goto('/');
+  }
 
   onMount(() => {
     // Libre Caslon von Google Fonts laden
@@ -141,10 +150,17 @@
         <span class="nav-icon">👤</span>
         {$t('nav.account')}
       </a>
-      <a href="/login" onclick={menuSchliessen} class="nav-link">
-        <span class="nav-icon">🔑</span>
-        {$t('nav.login')}
-      </a>
+      {#if !$eingeloggt}
+        <a href="/login" onclick={menuSchliessen} class="nav-link">
+          <span class="nav-icon">🔑</span>
+          {$t('nav.login')}
+        </a>
+      {:else}
+        <button type="button" onclick={ausloggen} class="nav-link nav-logout">
+          <span class="nav-icon">🚪</span>
+          {$t('nav.logout')}
+        </button>
+      {/if}
       <a href="/admin" onclick={menuSchliessen} class="nav-link">
         <span class="nav-icon">⚙</span>
         {$t('nav.admin')}

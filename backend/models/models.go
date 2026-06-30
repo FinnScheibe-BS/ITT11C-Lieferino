@@ -26,3 +26,29 @@ type Address struct {
 	PLZ        string `json:"plz"`
 	Ort        string `json:"ort"`
 }
+
+// 📦 Eine Bestellung eines Nutzers.
+type Order struct {
+	ID            uint        `gorm:"primaryKey" json:"id"`
+	UserID        uint        `json:"-"`
+	Nummer        string      `json:"nummer"`
+	Summe         float64     `json:"summe"`
+	Zwischensumme float64     `json:"zwischensumme"`
+	Trinkgeld     float64     `json:"trinkgeld"`
+	Gutschein     string      `json:"gutschein"`
+	Zahlungsart   string      `json:"zahlungsart"`
+	Liefertermin  string      `json:"liefertermin"`
+	Status        string      `json:"status"`
+	Positionen    []OrderItem `json:"positionen"`
+	CreatedAt     time.Time   `json:"datum"`
+}
+
+// Ein einzelner Artikel innerhalb einer Bestellung.
+type OrderItem struct {
+	ID         uint    `gorm:"primaryKey" json:"id"`
+	OrderID    uint    `json:"-"`
+	Name       string  `json:"name"`
+	Preis      float64 `json:"preis"`
+	Menge      int     `json:"menge"`
+	Restaurant string  `json:"restaurant"`
+}

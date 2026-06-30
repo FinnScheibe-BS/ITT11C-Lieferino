@@ -9,6 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 📧 GMAIL-ZUGANGSDATEN (im Klartext, außerhalb .env – mit Projektleitung abgesprochen).
+// ⚠️ Das normale Konto-Passwort funktioniert NICHT für SMTP! Hier muss ein
+//    16-stelliges Gmail-APP-PASSWORT stehen, damit echt verschickt wird.
+//    Solange das App-Passwort leer ist, läuft der Versand im Test-Modus.
+const standardGmailUser = "lieferino5@gmail.com"
+const standardGmailAppPasswort = "" // ⬅️ HIER das Gmail-App-Passwort eintragen
+
 // Eingabe für den E-Mail-Versand (gleiche Form wie im Frontend-Service).
 type emailInput struct {
 	An      string `json:"an" binding:"required,email"`
@@ -25,10 +32,17 @@ func SendeEmail(c *gin.Context) {
 		return
 	}
 
+	// Erst Umgebungsvariablen, sonst die Klartext-Standardwerte oben.
 	user := os.Getenv("GMAIL_USER")
+	if user == "" {
+		user = standardGmailUser
+	}
 	pass := os.Getenv("GMAIL_APP_PASSWORD")
+	if pass == "" {
+		pass = standardGmailAppPasswort
+	}
 
-	// Keine Zugangsdaten -> Test-Modus (es wird NICHTS verschickt).
+	// Kein App-Passwort hinterlegt -> Test-Modus (es wird NICHTS verschickt).
 	if user == "" || pass == "" {
 		c.JSON(http.StatusOK, gin.H{"gesendet": false, "testModus": true})
 		return

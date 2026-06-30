@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { warenkorb } from '$lib/stores/cart.js';
+  import { api, getToken } from '$lib/api.js';
 
   // 🧾 BESTELLVERLAUF
   // Liest die früheren Bestellungen aus dem localStorage (werden beim Checkout
@@ -18,8 +19,18 @@
     setTimeout(() => window.print(), 50);
   }
 
-  onMount(() => {
+  onMount(async () => {
+    // Erst die lokale Kopie zeigen (schnell + offline).
     bestellungen = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
+
+    // 🗄️ Falls eingeloggt: echte Bestellungen aus dem Backend (DB) laden.
+    if (getToken()) {
+      const res = await api('/api/orders');
+      if (res.ok && Array.isArray(res.daten)) {
+        // Backend liefert "positionen"; die Anzeige nutzt "artikel".
+        bestellungen = res.daten.map((o) => ({ ...o, artikel: o.positionen || [] }));
+      }
+    }
   });
 
   // 🔁 "Nochmal bestellen": legt die Artikel der alten Bestellung neu in den

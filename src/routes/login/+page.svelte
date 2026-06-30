@@ -4,6 +4,7 @@
   import { generiereCode, sendeVerifizierungsEmail } from '$lib/services/email.js';
   import { pruefeTotp } from '$lib/services/mfa.js';
   import { login, loginStatus, registriereFehlversuch } from '$lib/stores/auth.js';
+  import { api, setzeToken } from '$lib/api.js';
   import { dev } from '$app/environment';
 
   // Ablauf: 'login' (E-Mail+Passwort) -> ggf. 'mfa' (zweiter Faktor) -> fertig.
@@ -62,6 +63,11 @@
         : 'Falsches Passwort. 🔒';
       return;
     }
+
+    // 🗄️ Token vom Backend holen (für API-Aufrufe wie Profil/Bestellungen).
+    // Best-effort: existiert der Nutzer nur lokal, gibt es eben kein Token.
+    const res = await api('/api/auth/login', { method: 'POST', body: { email: email.trim(), passwort } });
+    if (res.ok && res.daten?.token) setzeToken(res.daten.token);
 
     // Passwort stimmt – ist 2FA aktiv?
     if (user.mfa?.aktiv) {

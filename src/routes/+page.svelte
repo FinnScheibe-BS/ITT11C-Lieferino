@@ -4,6 +4,7 @@
   import { generiereCode, sendeVerifizierungsEmail } from '$lib/services/email.js';
   import { pruefePasswortStaerke } from '$lib/services/passwort.js';
   import { pruefeAdresse } from '$lib/services/adresse.js';
+  import { api, setzeToken } from '$lib/api.js';
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
   import { eingeloggt, login, hatKonto } from '$lib/stores/auth.js';
   import { dev } from '$app/environment';
@@ -171,6 +172,28 @@
       geburtsdatum: geburtsdatumInput
     };
     localStorage.setItem("lieferino_user", JSON.stringify(userDaten));
+
+    // 🗄️ Nutzer im Backend (Datenbank) anlegen + Token speichern.
+    // Klappt das nicht (Backend aus), bleiben die Daten trotzdem lokal erhalten.
+    const reg = await api('/api/auth/register', {
+      method: 'POST',
+      body: {
+        email: emailInput, passwort: passwortInput, username: usernameInput,
+        vorname: vornameInput, nachname: nachnameInput, geburtsdatum: geburtsdatumInput
+      }
+    });
+    if (reg.ok && reg.daten?.token) {
+      setzeToken(reg.daten.token);
+      // Adresse direkt im Profil (DB) speichern.
+      await api('/api/me', {
+        method: 'PUT',
+        body: {
+          username: usernameInput, vorname: vornameInput, nachname: nachnameInput, geburtsdatum: geburtsdatumInput,
+          adressen: [{ label: 'Zuhause', strasse: strasseInput, hausnummer: hausnummerInput, plz: plzInput, ort: ortInput }]
+        }
+      });
+    }
+
     login();
   }
 

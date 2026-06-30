@@ -4,6 +4,7 @@
   import { sendeBestellBestaetigung } from '$lib/services/email.js';
   import { pruefeKarte, kartenTyp, formatiereNummer } from '$lib/services/payment.js';
   import { treuepunkte, punkteSammeln, punkteAbziehen, EINLOESE_SCHRITT, EINLOESE_WERT } from '$lib/stores/treue.js';
+  import { api, getToken } from '$lib/api.js';
 
   const LIEFERGEBUEHR = 2.49;
 
@@ -203,6 +204,46 @@
     const verlauf = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
     verlauf.unshift(bestellung);
     localStorage.setItem('lieferino_bestellungen', JSON.stringify(verlauf));
+
+    // 🗄️ Bestellung im Backend (DB) speichern – damit nichts verloren geht.
+    // Nur, wenn ein Token vorhanden ist (eingeloggt). Best-effort.
+    if (getToken()) {
+      await api('/api/orders', {
+        method: 'POST',
+        body: {
+          summe: endsumme,
+          zwischensumme: $gesamtSumme,
+          trinkgeld,
+          gutschein: aktiverGutschein?.code || '',
+          zahlungsart,
+          liefertermin,
+          positionen: $warenkorb.map((a) => ({
+            name: a.name, preis: a.preis, menge: a.menge, restaurant: a.restaurant
+          }))
+        }
+      });
+      // 🏠 Die verwendete Lieferadresse zusätzlich im Profil (DB) speichern.
+      if (aktiveAdresse) {
+        const meRes = await api('/api/me');
+        if (meRes.ok && meRes.daten) {
+          const adressen = meRes.daten.adressen || [];
+          const schon = adressen.some(
+            (a) => a.strasse === aktiveAdresse.strasse && a.plz === aktiveAdresse.plz && a.hausnummer === aktiveAdresse.hausnummer
+          );
+          if (!schon) {
+            adressen.push({ label: aktiveAdresse.label || 'Lieferadresse', ...aktiveAdresse });
+            await api('/api/me', {
+              method: 'PUT',
+              body: {
+                username: meRes.daten.username, vorname: meRes.daten.vorname,
+                nachname: meRes.daten.nachname, geburtsdatum: meRes.daten.geburtsdatum,
+                adressen
+              }
+            });
+          }
+        }
+      }
+    }
 
     // Für die Rechnung merken (der Warenkorb wird gleich geleert).
     letzteBestellung = bestellung;

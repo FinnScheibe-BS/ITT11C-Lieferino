@@ -33,6 +33,16 @@ func main() {
 			auth.POST("/login", handlers.Login)
 		}
 		api.POST("/email", handlers.SendeEmail)
+
+		// 🔒 Geschützte Routen (brauchen ein gültiges JWT-Token)
+		geschuetzt := api.Group("")
+		geschuetzt.Use(middleware.Auth())
+		{
+			geschuetzt.GET("/me", handlers.Me)
+			geschuetzt.PUT("/me", handlers.MeUpdate)
+			geschuetzt.POST("/orders", handlers.BestellungAnlegen)
+			geschuetzt.GET("/orders", handlers.Bestellungen)
+		}
 	}
 
 	log.Printf("🚀 Lieferino-Backend läuft auf Port %s", cfg.Port)

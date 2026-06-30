@@ -8,6 +8,8 @@
 // 👉 Echten Versand aktivieren: siehe EMAIL-SETUP.md
 // =====================================================================
 
+import { API_BASE } from '$lib/api.js';
+
 // Erzeugt einen 6-stelligen Verifizierungscode als Text, z.B. "048213".
 export function generiereCode() {
   return Math.floor(Math.random() * 1000000)
@@ -19,7 +21,7 @@ export function generiereCode() {
 // Gibt { gesendet, testModus? } zurück.
 async function sendeMail(an, betreff, text) {
   try {
-    const antwort = await fetch('/api/email', {
+    const antwort = await fetch(API_BASE + '/api/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ an, betreff, text })

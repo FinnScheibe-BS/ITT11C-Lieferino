@@ -31,6 +31,7 @@ const woerterbuch = {
     'nav.account': '👤 Account',
     'nav.login': '🔑 Login',
     'nav.admin': '🛠️ Admin',
+    'nav.logout': 'Logout',
     'home.hero_title': 'Willkommen bei Lieferino',
     'home.hero_sub': 'Dein Lieblingsessen, nur wenige Klicks entfernt 🍕',
     'home.cuisine_label': 'Essensart:',
