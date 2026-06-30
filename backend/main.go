@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"lieferino-backend/config"
 	"lieferino-backend/database"
@@ -23,6 +24,9 @@ func main() {
 	database.Verbinden(cfg)
 
 	r := gin.Default()
+	// 🛡️ Keinem Proxy-Header blind vertrauen (Backend ist direkt erreichbar).
+	r.SetTrustedProxies(nil)
+	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.CORS())
 
 	// Health-Check
@@ -31,12 +35,15 @@ func main() {
 	// API-Routen
 	api := r.Group("/api")
 	{
+		// 🛡️ Login/Registrierung gegen Brute-Force begrenzen (pro IP).
 		auth := api.Group("/auth")
+		auth.Use(middleware.RateLimit(10, time.Minute))
 		{
 			auth.POST("/register", handlers.Register)
 			auth.POST("/login", handlers.Login)
 		}
-		api.POST("/email", handlers.SendeEmail)
+		// 🛡️ E-Mail-Versand gegen Spam begrenzen (pro IP).
+		api.POST("/email", middleware.RateLimit(5, time.Minute), handlers.SendeEmail)
 
 		// Öffentlich: Bewertungen eines Restaurants lesen
 		api.GET("/restaurants/:slug/reviews", handlers.ListReviews)

@@ -1,0 +1,38 @@
+# 🐘 PostgreSQL als HOCHVERFÜGBARER Cluster (Patroni).
+# Dieser "postgresql"-Datentyp wird vom Zalando postgres-operator verstanden.
+# Der Operator baut daraus automatisch einen Patroni-Cluster:
+#   - 3 Postgres-Instanzen (1 Leader + 2 Replicas)
+#   - automatischer Failover (fällt der Leader aus, übernimmt eine Replica)
+#   - Streaming-Replication zwischen den Knoten
+#
+# Der Operator legt automatisch an:
+#   - Service "lieferino-db"       -> zeigt IMMER auf den aktuellen Leader (Schreiben)
+#   - Service "lieferino-db-repl"  -> zeigt auf die Replicas (Lesen, skalierbar)
+#   - Secret "lieferino.lieferino-db.credentials.postgresql.acid.zalan.do"
+#     mit dem generierten Passwort des App-Nutzers "lieferino".
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: lieferino-db
+  namespace: lieferino
+spec:
+  teamId: "lieferino"
+  postgresql:
+    version: "16"
+  numberOfInstances: 3      # 1 Leader + 2 Replicas = echte HA
+  volume:
+    size: 1Gi
+  # App-Datenbank + App-Nutzer direkt mit anlegen.
+  databases:
+    lieferino: lieferino     # Datenbank "lieferino" gehört dem Nutzer "lieferino"
+  users:
+    lieferino:               # Nutzer "lieferino" darf sich anmelden + Tabellen anlegen
+      - createdb
+  # Genug Ressourcen, dass es auch lokal (kind/minikube) startet.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

@@ -1,0 +1,87 @@
+# 🚀 Das Go-Backend als skalierbares Deployment (mehrere Kopien hinter einem Service).
+# Hinweis: Das JWT-Secret wird NICHT hier gesetzt – das Backend leitet es beim
+# Start selbst ab. Deshalb taucht es in keinem Manifest auf.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lieferino-backend
+  namespace: lieferino
+  labels:
+    app: lieferino-backend
+spec:
+  replicas: 2                      # 2 Backend-Instanzen -> ausfallsicher + skalierbar
+  selector:
+    matchLabels:
+      app: lieferino-backend
+  template:
+    metadata:
+      labels:
+        app: lieferino-backend
+    spec:
+      containers:
+        - name: backend
+          image: lieferino-backend:latest
+          imagePullPolicy: IfNotPresent   # lokal gebautes Image (kind/minikube) nutzen
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DB_HOST
+              value: "lieferino-db"        # Leader-Service (Schreiben) des Patroni-Clusters
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "lieferino"
+            - name: DB_SSLMODE
+              value: "require"             # Patroni/Spilo erzwingt verschlüsselte DB-Verbindung
+            # DB-Zugangsdaten kommen aus dem Secret, das der Operator erzeugt.
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: lieferino.lieferino-db.credentials.postgresql.acid.zalan.do
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lieferino.lieferino-db.credentials.postgresql.acid.zalan.do
+                  key: password
+            # Erlaubte Frontend-Herkunft (kommagetrennt). Hier ggf. echte Domain eintragen.
+            - name: CORS_ORIGINS
+              value: "http://localhost:5173"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+# 🌐 Service, der die Backend-Instanzen bündelt (intern erreichbar als "lieferino-backend").
+apiVersion: v1
+kind: Service
+metadata:
+  name: lieferino-backend
+  namespace: lieferino
+  labels:
+    app: lieferino-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: lieferino-backend
+  ports:
+    - port: 8090          # gleicher "Außen"-Port wie bei docker-compose
+      targetPort: 8080
+      protocol: TCP

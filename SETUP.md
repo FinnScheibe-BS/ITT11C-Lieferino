@@ -91,9 +91,19 @@ Verifizierung entfernt werden (er erscheint ohnehin nur im Entwicklungsmodus).
 
 ---
 
+## 5. ☸️ Skalierbar mit Kubernetes (optional, „große" Variante)
+Für den produktionsnahen Betrieb gibt es einen Kubernetes-Aufbau mit
+**hochverfügbarer Datenbank (Patroni, automatischer Failover)** und mehreren
+Backend-Kopien. Alles dazu (Schritt-für-Schritt) steht in **[`k8s/README.md`](k8s/README.md)**.
+
+> Für die normale Entwicklung ist das **nicht** nötig – `docker compose` genügt.
+
+---
+
 ## Kurzfassung
 | Was | Befehl | Adresse |
 |---|---|---|
 | Frontend | `npm install && npm run dev` | http://localhost:5173 |
 | Backend + DB | `cd backend && docker compose up --build` | http://localhost:8090 |
 | E-Mail | App-Passwort in `backend/handlers/email.go` + Backend neu bauen | – |
+| Kubernetes (HA) | siehe [`k8s/README.md`](k8s/README.md) | – |

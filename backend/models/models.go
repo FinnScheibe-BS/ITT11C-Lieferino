@@ -65,6 +65,10 @@ type User struct {
 	Gesperrt     bool      `gorm:"default:false" json:"gesperrt"`
 	Adressen     []Address `json:"adressen"`
 	CreatedAt    time.Time `json:"createdAt"`
+
+	// 🛡️ Brute-Force-Schutz: zählt Fehlversuche und sperrt das Konto kurz.
+	Fehlversuche  int        `json:"-"`
+	GesperrtBis   *time.Time `json:"-"`
 }
 
 // 🏠 Eine Lieferadresse, die zu einem Nutzer gehört.

@@ -11,6 +11,7 @@ type Config struct {
 	DBUser     string
 	DBPasswort string
 	DBName     string
+	DBSSLMode  string
 	JWTSecret  string
 }
 
@@ -22,7 +23,9 @@ func Laden() *Config {
 		DBUser:     getEnv("DB_USER", "lieferino"),
 		DBPasswort: getEnv("DB_PASSWORD", "lieferino"),
 		DBName:     getEnv("DB_NAME", "lieferino"),
-		JWTSecret:  getEnv("JWT_SECRET", "dev-secret-bitte-aendern"),
+		// docker-compose: "disable". Bei Patroni/Spilo (K8s) z.B. "require".
+		DBSSLMode: getEnv("DB_SSLMODE", "disable"),
+		JWTSecret: getEnv("JWT_SECRET", "dev-secret-bitte-aendern"),
 	}
 }
 

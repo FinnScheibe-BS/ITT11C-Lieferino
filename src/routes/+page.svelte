@@ -26,6 +26,8 @@
   let testCodeHinweis = $state("");
   let prueftAdresse = $state(false);
   let adressFehler = $state("");
+  let registrierFehler = $state("");
+  let registrierAnforderungen = $state([]);
   let usernameInput = $state("");
   let vornameInput = $state("");
   let nachnameInput = $state("");
@@ -175,6 +177,8 @@
 
     // 🗄️ Nutzer im Backend (Datenbank) anlegen + Token speichern.
     // Klappt das nicht (Backend aus), bleiben die Daten trotzdem lokal erhalten.
+    registrierFehler = "";
+    registrierAnforderungen = [];
     const reg = await api('/api/auth/register', {
       method: 'POST',
       body: {
@@ -192,8 +196,14 @@
           adressen: [{ label: 'Zuhause', strasse: strasseInput, hausnummer: hausnummerInput, plz: plzInput, ort: ortInput }]
         }
       });
+    } else if (!reg.offline) {
+      // 🛡️ Server hat abgelehnt (z.B. E-Mail vergeben, Passwort, zu viele Anfragen)
+      //    -> klaren Fehler zeigen und NICHT einloggen.
+      registrierFehler = reg.daten?.fehler || "Registrierung fehlgeschlagen. Bitte später erneut versuchen.";
+      registrierAnforderungen = reg.daten?.anforderungen || [];
+      return;
     }
-
+    // Erfolg ODER Backend offline -> die App funktioniert lokal weiter.
     login();
   }
 
@@ -267,13 +277,13 @@
                 <div class="pw-track">
                   <div class="pw-fill" style="width:{passwortStaerke.score * 20}%; background:{passwortStaerke.farbe};"></div>
                 </div>
-                <span class="pw-label" style="color:{passwortStaerke.farbe};">{passwortStaerke.text}</span>
+                <span class="pw-label" style="color:{passwortStaerke.farbe};">{$t(passwortStaerke.stufeKey)}</span>
                 <ul class="pw-rules">
-                  <li class:ok={passwortStaerke.regeln.laenge}>Mind. 8 Zeichen</li>
-                  <li class:ok={passwortStaerke.regeln.grossbuchstabe}>Großbuchstabe</li>
-                  <li class:ok={passwortStaerke.regeln.kleinbuchstabe}>Kleinbuchstabe</li>
-                  <li class:ok={passwortStaerke.regeln.zahl}>Zahl</li>
-                  <li class:ok={passwortStaerke.regeln.sonderzeichen}>Sonderzeichen</li>
+                  <li class:ok={passwortStaerke.regeln.laenge}>{$t('pw.rule_length')}</li>
+                  <li class:ok={passwortStaerke.regeln.grossbuchstabe}>{$t('pw.rule_upper')}</li>
+                  <li class:ok={passwortStaerke.regeln.kleinbuchstabe}>{$t('pw.rule_lower')}</li>
+                  <li class:ok={passwortStaerke.regeln.zahl}>{$t('pw.rule_digit')}</li>
+                  <li class:ok={passwortStaerke.regeln.sonderzeichen}>{$t('pw.rule_special')}</li>
                 </ul>
               </div>
             {/if}
@@ -374,6 +384,16 @@
             </div>
           </div>
           {#if adressFehler}<p class="err">{adressFehler}</p>{/if}
+          {#if registrierFehler}
+            <div class="err-box">
+              <p class="err">{registrierFehler}</p>
+              {#if registrierAnforderungen.length > 0}
+                <ul class="err-list">
+                  {#each registrierAnforderungen as a}<li>{a}</li>{/each}
+                </ul>
+              {/if}
+            </div>
+          {/if}
           <div class="btn-row">
             <button type="button" class="ghost-btn" onclick={() => loginSchritt = 2}>← Zurück</button>
             <button type="submit" class="gold-btn flex1" disabled={prueftAdresse}>
@@ -722,6 +742,9 @@
 
   /* Feedback */
   .err { color: #ff453a; font-size: 0.82rem; font-weight: 600; margin: 2px 0 0; }
+  .err-box { background: rgba(255, 69, 58, 0.10); border: 1px solid rgba(255, 69, 58, 0.35); border-radius: 10px; padding: 10px 12px; margin: 4px 0; }
+  .err-list { margin: 6px 0 0; padding-left: 18px; }
+  .err-list li { color: #ff6961; font-size: 0.8rem; line-height: 1.5; }
   .auth-hint { text-align: center; font-size: 0.84rem; color: var(--text-muted); margin: 4px 0 0; }
   .auth-hint a { color: var(--gold-text); font-weight: 600; }
   .verify-text { color: var(--text-muted); font-size: 0.88rem; line-height: 1.5; }

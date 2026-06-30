@@ -18,8 +18,8 @@ var DB *gorm.DB
 // Tabellen automatisch an (AutoMigrate).
 func Verbinden(cfg *config.Config) {
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		cfg.DBHost, cfg.DBUser, cfg.DBPasswort, cfg.DBName, cfg.DBPort,
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+		cfg.DBHost, cfg.DBUser, cfg.DBPasswort, cfg.DBName, cfg.DBPort, cfg.DBSSLMode,
 	)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})

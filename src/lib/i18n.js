@@ -51,7 +51,17 @@ const woerterbuch = {
     'rest.only_favs': '❤️ Nur Favoriten',
     'rest.all': '🤍 Alle',
     'rest.veg': '🌱 Vegetarisch',
-    'rest.none': '😕 Keine Restaurants gefunden. Versuche einen anderen Filter.'
+    'rest.none': '😕 Keine Restaurants gefunden. Versuche einen anderen Filter.',
+    'pw.title': 'Passwort-Anforderungen:',
+    'pw.rule_length': 'Mindestens 10 Zeichen',
+    'pw.rule_upper': 'Ein Großbuchstabe (A–Z)',
+    'pw.rule_lower': 'Ein Kleinbuchstabe (a–z)',
+    'pw.rule_digit': 'Eine Zahl (0–9)',
+    'pw.rule_special': 'Ein Sonderzeichen (z. B. ! ? @ #)',
+    'pw.very_weak': 'Sehr schwach',
+    'pw.medium': 'Mittel',
+    'pw.strong': 'Stark',
+    'pw.very_strong': 'Sehr stark'
   },
   en: {
     'nav.home': '🏠 Home',
@@ -80,7 +90,17 @@ const woerterbuch = {
     'rest.only_favs': '❤️ Favorites only',
     'rest.all': '🤍 All',
     'rest.veg': '🌱 Vegetarian',
-    'rest.none': '😕 No restaurants found. Try a different filter.'
+    'rest.none': '😕 No restaurants found. Try a different filter.',
+    'pw.title': 'Password requirements:',
+    'pw.rule_length': 'At least 10 characters',
+    'pw.rule_upper': 'An uppercase letter (A–Z)',
+    'pw.rule_lower': 'A lowercase letter (a–z)',
+    'pw.rule_digit': 'A number (0–9)',
+    'pw.rule_special': 'A special character (e.g. ! ? @ #)',
+    'pw.very_weak': 'Very weak',
+    'pw.medium': 'Medium',
+    'pw.strong': 'Strong',
+    'pw.very_strong': 'Very strong'
   },
   es: {
     'nav.home': '🏠 Inicio',
