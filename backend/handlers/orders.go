@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strings"
 
 	"lieferino-backend/database"
 	"lieferino-backend/models"
@@ -65,7 +66,35 @@ func BestellungAnlegen(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"fehler": "Bestellung konnte nicht gespeichert werden"})
 		return
 	}
+
+	// 📧 Bestellbestätigung per E-Mail (im Hintergrund, blockiert die Antwort nicht).
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err == nil && user.Email != "" {
+		betreff := "Deine Lieferino-Bestellung " + order.Nummer + " 🍕"
+		text := bestellBestaetigungText(&user, &order)
+		go func() { _, _ = sendeMail(user.Email, betreff, text) }()
+	}
+
 	c.JSON(http.StatusCreated, order)
+}
+
+// Baut den Text der Bestellbestätigungs-E-Mail zusammen.
+func bestellBestaetigungText(user *models.User, order *models.Order) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Hallo%s,\r\n\r\nvielen Dank für deine Bestellung bei Lieferino!\r\n\r\n", nameOderLeer(user))
+	fmt.Fprintf(&b, "Bestellnummer: %s\r\n\r\nDeine Artikel:\r\n", order.Nummer)
+	for _, p := range order.Positionen {
+		fmt.Fprintf(&b, "  - %dx %s (%.2f €)\r\n", p.Menge, p.Name, p.Preis*float64(p.Menge))
+	}
+	if order.Trinkgeld > 0 {
+		fmt.Fprintf(&b, "  - Trinkgeld: %.2f €\r\n", order.Trinkgeld)
+	}
+	fmt.Fprintf(&b, "\r\nGesamt: %.2f €\r\n", order.Summe)
+	if order.Liefertermin != "" {
+		fmt.Fprintf(&b, "Liefertermin: %s Uhr\r\n", order.Liefertermin)
+	}
+	fmt.Fprintf(&b, "Bezahlt mit: %s\r\n\r\nGuten Appetit! 🍕\r\nDein Lieferino-Team", order.Zahlungsart)
+	return b.String()
 }
 
 // 🧾 Bestellungen liefert alle Bestellungen des eingeloggten Nutzers (neueste zuerst).

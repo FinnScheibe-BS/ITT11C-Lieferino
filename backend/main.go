@@ -41,6 +41,13 @@ func main() {
 		{
 			auth.POST("/register", handlers.Register)
 			auth.POST("/login", handlers.Login)
+			// 📧 E-Mail-Verifizierung
+			auth.POST("/verify-email", handlers.VerifyEmail)
+			auth.POST("/resend-code", handlers.ResendCode)
+			// 🔐 MFA (TOTP): Einrichtung (Setup-Token) + Login-Schritt-2 (MFA-Token)
+			auth.POST("/mfa/setup", handlers.MFASetup)
+			auth.POST("/mfa/enable", handlers.MFAEnable)
+			auth.POST("/mfa/verify", handlers.MFAVerify)
 		}
 		// 🛡️ E-Mail-Versand gegen Spam begrenzen (pro IP).
 		api.POST("/email", middleware.RateLimit(5, time.Minute), handlers.SendeEmail)

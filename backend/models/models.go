@@ -67,8 +67,17 @@ type User struct {
 	CreatedAt    time.Time `json:"createdAt"`
 
 	// 🛡️ Brute-Force-Schutz: zählt Fehlversuche und sperrt das Konto kurz.
-	Fehlversuche  int        `json:"-"`
-	GesperrtBis   *time.Time `json:"-"`
+	Fehlversuche int        `json:"-"`
+	GesperrtBis  *time.Time `json:"-"`
+
+	// 📧 E-Mail-Verifizierung: Konto erst nutzbar, wenn die E-Mail bestätigt ist.
+	EmailVerifiziert bool       `gorm:"default:false" json:"emailVerifiziert"`
+	EmailCode        string     `json:"-"` // aktueller 6-stelliger Bestätigungscode
+	EmailCodeAblauf  *time.Time `json:"-"` // wann der Code abläuft
+
+	// 🔐 MFA (Zwei-Faktor per Authenticator-App / TOTP): Pflicht für Zugang.
+	MFAAktiv  bool   `gorm:"default:false" json:"mfaAktiv"`
+	MFASecret string `json:"-"` // TOTP-Geheimnis (Base32)
 }
 
 // 🏠 Eine Lieferadresse, die zu einem Nutzer gehört.

@@ -38,6 +38,11 @@ func Auth() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"fehler": "Token ungültig"})
 			return
 		}
+		// Nur volle Tokens dürfen an geschützte Daten (nicht "setup"/"mfa").
+		if typ, _ := claims["typ"].(string); typ != "full" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"fehler": "Token ungültig"})
+			return
+		}
 		sub, ok := claims["sub"].(float64)
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"fehler": "Token ungültig"})
