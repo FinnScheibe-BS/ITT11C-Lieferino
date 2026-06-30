@@ -10,6 +10,28 @@ Die App besteht aus **zwei Teilen**, die zusammen laufen:
 
 ---
 
+## 🚀 Schnellstart (alles mit einem Klick)
+Es gibt fertige Start-Skripte, die **alles** auf einmal hochfahren (Backend + Datenbank + Frontend)
+und den Browser öffnen. **Voraussetzung:** Docker läuft + Node.js ist installiert.
+
+| Betriebssystem | So startest du |
+|---|---|
+| 🐧 **Linux** | im Terminal: `./start-linux.sh` (einmalig evtl. `chmod +x start-linux.sh`) |
+| 🍎 **macOS** | **Doppelklick** auf `start-mac.command` (oder im Terminal: `./start-mac.command`) |
+| 🪟 **Windows** | **Doppelklick** auf `start-windows.bat` |
+
+Danach läuft die App auf **http://localhost:5173** (Backend auf :8090).
+
+**Beenden:** im Terminal `Strg+C`. Die Docker-Container laufen weiter – zum Stoppen:
+```sh
+cd backend
+docker compose down
+```
+
+> Wer es lieber von Hand macht, findet die Einzelschritte unten.
+
+---
+
 ## 0. Voraussetzungen
 - **Node.js** (für das Frontend)
 - **Docker** + **Docker Compose** (für Backend + Datenbank)
