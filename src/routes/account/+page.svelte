@@ -1,5 +1,4 @@
 <script>
-  import { onMount } from 'svelte';
   // 🔐 MFA-Funktionen
   import { generiereSecret, otpauthUri, pruefeTotp, generiereBackupCodes } from '$lib/services/mfa.js';
   import { eingeloggt, logout } from '$lib/stores/auth.js';
@@ -26,7 +25,11 @@
   // Temporäre Inputs für die Bearbeitung
   let inputs = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
 
-  onMount(async () => {
+  // Hinweis: onMount feuert in diesem Setup nicht zuverlässig -> $effect (läuft sicher).
+  let initGeladen = false;
+  $effect(() => {
+    if (initGeladen) return;
+    initGeladen = true;
     const gespeicherterUser = localStorage.getItem("lieferino_user");
     if (gespeicherterUser) {
       user = JSON.parse(gespeicherterUser);
@@ -48,8 +51,9 @@
       geladen = true;
     }
 
-    // 🗄️ Falls eingeloggt: aktuelle Daten aus dem Backend (DB) holen und übernehmen.
-    if (getToken()) {
+    // 🗄️ Falls eingeloggt: aktuelle Daten aus dem Backend (DB) nachladen.
+    (async () => {
+      if (!getToken()) return;
       const res = await api('/api/me');
       if (res.ok && res.daten) {
         // Backend ist die Quelle der Wahrheit für Profil + Adressen.
@@ -60,7 +64,7 @@
         localStorage.setItem('lieferino_user', JSON.stringify(user));
         geladen = true;
       }
-    }
+    })();
   });
 
   // 🗄️ Speichert Profil + Adressen ins Backend (DB), wenn eingeloggt.

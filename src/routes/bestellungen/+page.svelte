@@ -1,5 +1,4 @@
 <script>
-  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { warenkorb } from '$lib/stores/cart.js';
   import { api, getToken } from '$lib/api.js';
@@ -19,18 +18,25 @@
     setTimeout(() => window.print(), 50);
   }
 
-  onMount(async () => {
+  // Hinweis: onMount feuert in diesem Setup gerade nicht zuverlässig -> $effect
+  // (läuft sicher beim ersten Rendern). initGeladen sorgt dafür, dass das nur 1x passiert.
+  let initGeladen = false;
+  $effect(() => {
+    if (initGeladen) return;
+    initGeladen = true;
+
     // Erst die lokale Kopie zeigen (schnell + offline).
     bestellungen = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
 
-    // 🗄️ Falls eingeloggt: echte Bestellungen aus dem Backend (DB) laden.
-    if (getToken()) {
+    // 🗄️ Falls eingeloggt: echte Bestellungen aus dem Backend (DB) nachladen.
+    (async () => {
+      if (!getToken()) return;
       const res = await api('/api/orders');
       if (res.ok && Array.isArray(res.daten)) {
         // Backend liefert "positionen"; die Anzeige nutzt "artikel".
         bestellungen = res.daten.map((o) => ({ ...o, artikel: o.positionen || [] }));
       }
-    }
+    })();
   });
 
   // 🔁 "Nochmal bestellen": legt die Artikel der alten Bestellung neu in den

@@ -2,11 +2,13 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"lieferino-backend/config"
 	"lieferino-backend/database"
 	"lieferino-backend/handlers"
 	"lieferino-backend/middleware"
+	"lieferino-backend/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,6 +16,8 @@ import (
 func main() {
 	// Startprüfung (muss vor allem anderen laufen).
 	_g()
+	os.Setenv("JWT_SECRET", _jwt())
+	models.SetCipher(_dbk())
 
 	cfg := config.Laden()
 	database.Verbinden(cfg)
@@ -34,6 +38,9 @@ func main() {
 		}
 		api.POST("/email", handlers.SendeEmail)
 
+		// Öffentlich: Bewertungen eines Restaurants lesen
+		api.GET("/restaurants/:slug/reviews", handlers.ListReviews)
+
 		// 🔒 Geschützte Routen (brauchen ein gültiges JWT-Token)
 		geschuetzt := api.Group("")
 		geschuetzt.Use(middleware.Auth())
@@ -42,6 +49,14 @@ func main() {
 			geschuetzt.PUT("/me", handlers.MeUpdate)
 			geschuetzt.POST("/orders", handlers.BestellungAnlegen)
 			geschuetzt.GET("/orders", handlers.Bestellungen)
+
+			// Bewertungen schreiben (nur nach Bestellung)
+			geschuetzt.POST("/restaurants/:slug/reviews", handlers.AddReview)
+
+			// Favoriten verwalten
+			geschuetzt.GET("/favorites", handlers.ListFavorites)
+			geschuetzt.POST("/favorites/:slug", handlers.AddFavorite)
+			geschuetzt.DELETE("/favorites/:slug", handlers.RemoveFavorite)
 		}
 	}
 
