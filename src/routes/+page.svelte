@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { warenkorb } from '$lib/stores/cart.js';
   import { pruefePasswortStaerke } from '$lib/services/passwort.js';
   import { pruefeAdresse } from '$lib/services/adresse.js';
