@@ -2,6 +2,7 @@
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen } from '$lib/stores/bewertungen.js';
+  import { bewertungsSchnitt } from '$lib/stores/bewertungsSchnitt.js';
   import { t } from '$lib/i18n.js';
   import { drachenlordAusloesen } from '$lib/stores/easteregg.js';
   import { konfetti, eierToast } from '$lib/confetti.js';
@@ -35,9 +36,18 @@
   let nurGeoeffnet = $state(false);
 
   function anzeigeBewertung(r) {
+    // 1. Wahl: Live-Durchschnitt aus der DB (alle Nutzer-Bewertungen).
+    const s = $bewertungsSchnitt[r.slug];
+    if (s && s.anzahl > 0) return s.schnitt;
+    // 2. Wahl: lokal geladene Bewertungen. Sonst der statische Wert.
     const reviews = $bewertungen[r.slug] || [];
     if (reviews.length === 0) return r.bewertung;
-    return reviews.reduce((s, b) => s + b.sterne, 0) / reviews.length;
+    return reviews.reduce((acc, b) => acc + b.sterne, 0) / reviews.length;
+  }
+
+  // Anzahl der echten Bewertungen (für die Anzeige neben den Sternen).
+  function anzahlBewertungen(r) {
+    return $bewertungsSchnitt[r.slug]?.anzahl ?? 0;
   }
 
   let gefilterteRestaurants = $derived(
@@ -109,7 +119,7 @@
         <button class="herz" onclick={(e) => herzKlick(e, r.slug)} aria-label="Favorit">
           {$favoriten.includes(r.slug) ? '❤️' : '🤍'}
         </button>
-        <span class="rating-badge">⭐ {anzeigeBewertung(r).toFixed(1)}</span>
+        <span class="rating-badge">⭐ {anzeigeBewertung(r).toFixed(1)}{#if anzahlBewertungen(r) > 0} <small>({anzahlBewertungen(r)})</small>{/if}</span>
 
         <!-- Text unten -->
         <div class="card-info">

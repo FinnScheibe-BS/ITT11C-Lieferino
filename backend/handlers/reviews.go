@@ -66,3 +66,25 @@ func AddReview(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, review)
 }
+
+// ⭐ ReviewSchnitt liefert pro Restaurant den Durchschnitt + die Anzahl der
+// Bewertungen (öffentlich) – für die "Live"-Sterne auf den Kacheln.
+// Antwort: { "luigis-pizzeria": { "schnitt": 4.5, "anzahl": 3 }, ... }
+func ReviewSchnitt(c *gin.Context) {
+	type zeile struct {
+		RestaurantSlug string
+		Schnitt        float64
+		Anzahl         int
+	}
+	var zeilen []zeile
+	database.DB.Model(&models.Review{}).
+		Select("restaurant_slug, AVG(sterne) as schnitt, COUNT(*) as anzahl").
+		Group("restaurant_slug").
+		Scan(&zeilen)
+
+	ergebnis := gin.H{}
+	for _, z := range zeilen {
+		ergebnis[z.RestaurantSlug] = gin.H{"schnitt": z.Schnitt, "anzahl": z.Anzahl}
+	}
+	c.JSON(http.StatusOK, ergebnis)
+}

@@ -28,7 +28,7 @@ func Verbinden(cfg *config.Config) {
 	}
 
 	// Tabellen automatisch anlegen / aktualisieren.
-	if err := db.AutoMigrate(&models.User{}, &models.Address{}, &models.Order{}, &models.OrderItem{}, &models.Review{}, &models.Favorite{}); err != nil {
+	if err := db.AutoMigrate(&models.User{}, &models.Address{}, &models.Order{}, &models.OrderItem{}, &models.Review{}, &models.Favorite{}, &models.Restaurant{}, &models.Product{}); err != nil {
 		log.Fatalf("❌ Migration fehlgeschlagen: %v", err)
 	}
 

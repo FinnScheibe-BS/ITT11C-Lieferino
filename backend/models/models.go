@@ -91,6 +91,32 @@ type Address struct {
 	Ort        string `json:"ort"`
 }
 
+// 🏪 Ein Verkäufer/Restaurant (für die serverseitige Preisprüfung).
+type Restaurant struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	Slug         string    `gorm:"uniqueIndex" json:"slug"`
+	Name         string    `gorm:"index" json:"name"`
+	Typ          string    `json:"typ"`
+	Emoji        string    `json:"emoji"`
+	Bewertung    float64   `json:"bewertung"`
+	Lieferzeit   string    `json:"lieferzeit"`
+	MinBestell   float64   `json:"minBestell"`
+	Beschreibung string    `json:"beschreibung"`
+	Produkte     []Product `json:"produkte"`
+}
+
+// 🍕 Ein Produkt/Gericht eines Restaurants. Der Preis HIER ist maßgeblich –
+// die Bestellung wird serverseitig gegen diesen Preis geprüft.
+type Product struct {
+	ID             uint    `gorm:"primaryKey" json:"id"`
+	RestaurantID   uint    `json:"-"`
+	RestaurantSlug string  `gorm:"index" json:"slug"`
+	RestaurantName string  `gorm:"index" json:"restaurant"`
+	Name           string  `gorm:"index" json:"name"`
+	Preis          float64 `json:"preis"`
+	Beschreibung   string  `json:"beschreibung"`
+}
+
 // 📦 Eine Bestellung eines Nutzers.
 type Order struct {
 	ID            uint        `gorm:"primaryKey" json:"id"`

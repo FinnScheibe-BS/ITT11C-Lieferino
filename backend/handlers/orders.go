@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 
 	"lieferino-backend/database"
 	"lieferino-backend/models"
@@ -37,6 +39,46 @@ func BestellungAnlegen(c *gin.Context) {
 	if err := c.ShouldBindJSON(&in); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"fehler": err.Error()})
 		return
+	}
+
+	// 🛡️ PREISPRÜFUNG: Jedes Produkt + jeder Preis wird gegen die DATENBANK
+	// geprüft. So kann niemand im Frontend (z.B. per Inspektor) den Preis
+	// manipulieren und teure Sachen billig kaufen.
+	if len(in.Positionen) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"fehler": "Die Bestellung enthält keine Artikel."})
+		return
+	}
+	var echteZwischensumme float64
+	for i := range in.Positionen {
+		pos := &in.Positionen[i]
+		if pos.Menge < 1 {
+			pos.Menge = 1
+		}
+		var prod models.Product
+		if err := database.DB.
+			Where("(restaurant_name = ? OR restaurant_slug = ?) AND name = ?", pos.Restaurant, pos.Restaurant, pos.Name).
+			First(&prod).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"fehler": fmt.Sprintf("Produkt \"%s\" wurde nicht gefunden und kann nicht bestellt werden.", pos.Name),
+			})
+			return
+		}
+		// Der Preis aus der DB ist maßgeblich (überschreibt den vom Client).
+		pos.Preis = prod.Preis
+		echteZwischensumme += prod.Preis * float64(pos.Menge)
+	}
+	// Hat der Client eine andere Zwischensumme behauptet? -> Manipulation -> ablehnen.
+	if math.Abs(echteZwischensumme-in.Zwischensumme) > 0.01 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"fehler": "Die Preise stimmen nicht mit unseren Daten überein. Bitte lade die Seite neu.",
+		})
+		return
+	}
+	// Die echte Zwischensumme verwenden + sicherstellen, dass die Endsumme
+	// nicht unter die Artikelkosten (minus Trinkgeld) gedrückt wurde.
+	in.Zwischensumme = echteZwischensumme
+	if in.Trinkgeld < 0 {
+		in.Trinkgeld = 0
 	}
 
 	// Bestellnummer erzeugen, z.B. "LF-7F3A9C".
@@ -97,6 +139,24 @@ func bestellBestaetigungText(user *models.User, order *models.Order) string {
 	return b.String()
 }
 
+// 🚚 Liefer-Phasen + serverseitige Status-Berechnung aus der vergangenen Zeit.
+// So ist der Status manipulationssicher (kein Frontend-Wert) und braucht keinen
+// Hintergrund-Job. Gesamte Lieferzeit: 30 Minuten, in 4 Phasen.
+var lieferPhasen = []string{"Bestellung erhalten", "Wird zubereitet", "Unterwegs", "Geliefert"}
+
+func statusBerechnen(erstellt time.Time) (int, string) {
+	const gesamt = 30 * time.Minute
+	anteil := float64(time.Since(erstellt)) / float64(gesamt)
+	if anteil < 0 {
+		anteil = 0
+	}
+	idx := int(anteil * float64(len(lieferPhasen)))
+	if idx > len(lieferPhasen)-1 {
+		idx = len(lieferPhasen) - 1
+	}
+	return idx, lieferPhasen[idx]
+}
+
 // 🧾 Bestellungen liefert alle Bestellungen des eingeloggten Nutzers (neueste zuerst).
 func Bestellungen(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
@@ -107,5 +167,30 @@ func Bestellungen(c *gin.Context) {
 		Order("created_at desc").
 		Find(&orders)
 
+	// Aktuellen Status je Bestellung serverseitig setzen.
+	for i := range orders {
+		_, orders[i].Status = statusBerechnen(orders[i].CreatedAt)
+	}
+
 	c.JSON(http.StatusOK, orders)
+}
+
+// 🚚 BestellStatus liefert den aktuellen Liefer-Status EINER Bestellung (für Live-Tracking).
+func BestellStatus(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	nummer := c.Param("nummer")
+
+	var order models.Order
+	if err := database.DB.Where("nummer = ? AND user_id = ?", nummer, userID).First(&order).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"fehler": "Bestellung nicht gefunden"})
+		return
+	}
+
+	phase, text := statusBerechnen(order.CreatedAt)
+	c.JSON(http.StatusOK, gin.H{
+		"nummer": order.Nummer,
+		"phase":  phase,
+		"status": text,
+		"phasen": lieferPhasen,
+	})
 }

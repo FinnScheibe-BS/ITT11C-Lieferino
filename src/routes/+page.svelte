@@ -1,13 +1,13 @@
 <script>
   import { onMount } from 'svelte';
   import { warenkorb } from '$lib/stores/cart.js';
-  import { generiereCode, sendeVerifizierungsEmail } from '$lib/services/email.js';
   import { pruefePasswortStaerke } from '$lib/services/passwort.js';
   import { pruefeAdresse } from '$lib/services/adresse.js';
-  import { api, setzeToken } from '$lib/api.js';
+  import { api } from '$lib/api.js';
+  import AuthVollenden from '$lib/AuthVollenden.svelte';
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
+  import { bewertungsSchnitt } from '$lib/stores/bewertungsSchnitt.js';
   import { eingeloggt, login, hatKonto } from '$lib/stores/auth.js';
-  import { dev } from '$app/environment';
   import { t } from '$lib/i18n.js';
   import { drachenlordAusloesen } from '$lib/stores/easteregg.js';
   import { konfetti, eierToast } from '$lib/confetti.js';
@@ -19,11 +19,7 @@
   let emailInput = $state("");
   let passwortInput = $state("");
   let passwortStaerke = $derived(pruefePasswortStaerke(passwortInput));
-  let zeigeVerifizierung = $state(false);
-  let korrekterCode = $state("");
-  let eingegebenerCode = $state("");
-  let codeFehler = $state("");
-  let testCodeHinweis = $state("");
+  let zeigeAbschluss = $state(false); // true -> E-Mail-Code + MFA-Einrichtung (AuthVollenden)
   let prueftAdresse = $state(false);
   let adressFehler = $state("");
   let registrierFehler = $state("");
@@ -92,35 +88,13 @@
     }
   });
 
-  async function geheZuSchritt2(e) {
+  // Schritt 1 -> 2: Das Passwort ist (per Button-disabled) schon stark genug.
+  function geheZuSchritt2(e) {
     e.preventDefault();
-    if (!passwortStaerke.istSicher) { codeFehler = ""; return; }
-    if (emailInput.trim() !== "" && passwortInput.trim() !== "") {
-      korrekterCode = generiereCode();
-      const ergebnis = await sendeVerifizierungsEmail(emailInput, korrekterCode);
-      testCodeHinweis = ergebnis.testCode ?? "";
-      zeigeVerifizierung = true;
-      eingegebenerCode = "";
-      codeFehler = "";
-    }
-  }
-
-  function bestaetigeCode(e) {
-    e.preventDefault();
-    if (eingegebenerCode.trim() === korrekterCode) {
-      zeigeVerifizierung = false;
-      codeFehler = "";
-      loginSchritt = 2;
-    } else {
-      codeFehler = "Der Code ist leider falsch. Bitte versuche es erneut. 🔁";
-    }
-  }
-
-  async function codeErneutSenden() {
-    korrekterCode = generiereCode();
-    const ergebnis = await sendeVerifizierungsEmail(emailInput, korrekterCode);
-    testCodeHinweis = ergebnis.testCode ?? "";
-    codeFehler = "";
+    if (!passwortStaerke.istSicher) return;
+    if (emailInput.trim() === "" || passwortInput.trim() === "") return;
+    registrierFehler = "";
+    loginSchritt = 2;
   }
 
   function geheZuSchritt3(e) {
@@ -175,8 +149,8 @@
     };
     localStorage.setItem("lieferino_user", JSON.stringify(userDaten));
 
-    // 🗄️ Nutzer im Backend (Datenbank) anlegen + Token speichern.
-    // Klappt das nicht (Backend aus), bleiben die Daten trotzdem lokal erhalten.
+    // 🗄️ Nutzer im Backend (Datenbank) anlegen. Es kommt KEIN Token zurück –
+    // das Konto ist erst nutzbar nach E-Mail-Bestätigung + MFA-Einrichtung.
     registrierFehler = "";
     registrierAnforderungen = [];
     const reg = await api('/api/auth/register', {
@@ -186,24 +160,32 @@
         vorname: vornameInput, nachname: nachnameInput, geburtsdatum: geburtsdatumInput
       }
     });
-    if (reg.ok && reg.daten?.token) {
-      setzeToken(reg.daten.token);
-      // Adresse direkt im Profil (DB) speichern.
-      await api('/api/me', {
-        method: 'PUT',
-        body: {
-          username: usernameInput, vorname: vornameInput, nachname: nachnameInput, geburtsdatum: geburtsdatumInput,
-          adressen: [{ label: 'Zuhause', strasse: strasseInput, hausnummer: hausnummerInput, plz: plzInput, ort: ortInput }]
-        }
-      });
-    } else if (!reg.offline) {
-      // 🛡️ Server hat abgelehnt (z.B. E-Mail vergeben, Passwort, zu viele Anfragen)
-      //    -> klaren Fehler zeigen und NICHT einloggen.
-      registrierFehler = reg.daten?.fehler || "Registrierung fehlgeschlagen. Bitte später erneut versuchen.";
-      registrierAnforderungen = reg.daten?.anforderungen || [];
+
+    if (reg.ok && reg.daten?.needsVerification) {
+      // Backend hat einen Code per E-Mail geschickt -> Bestätigung + MFA einrichten.
+      zeigeAbschluss = true;
       return;
     }
-    // Erfolg ODER Backend offline -> die App funktioniert lokal weiter.
+    if (reg.offline) {
+      // Backend nicht erreichbar -> App lokal weiternutzen (Daten bleiben lokal).
+      login();
+      return;
+    }
+    // 🛡️ Server hat abgelehnt (E-Mail vergeben, Passwort, zu viele Anfragen) -> klar zeigen.
+    registrierFehler = reg.daten?.fehler || "Registrierung fehlgeschlagen. Bitte später erneut versuchen.";
+    registrierAnforderungen = reg.daten?.anforderungen || [];
+  }
+
+  // E-Mail bestätigt + MFA eingerichtet -> volles Token liegt vor. Jetzt Adresse/Profil
+  // im Backend speichern und einloggen.
+  async function abschlussFertig() {
+    await api('/api/me', {
+      method: 'PUT',
+      body: {
+        username: usernameInput, vorname: vornameInput, nachname: nachnameInput, geburtsdatum: geburtsdatumInput,
+        adressen: [{ label: 'Zuhause', strasse: strasseInput, hausnummer: hausnummerInput, plz: plzInput, ort: ortInput }]
+      }
+    });
     login();
   }
 
@@ -220,8 +202,14 @@
     })
   );
 
+  // Live-Sterne aus der DB (Durchschnitt aller Bewertungen), sonst statischer Wert.
+  function schnittVon(r) {
+    const s = $bewertungsSchnitt[r.slug];
+    return s && s.anzahl > 0 ? s.schnitt : r.bewertung;
+  }
+
   let top10Restaurants = $derived(
-    [...$aktiveRestaurants].sort((a, b) => b.bewertung - a.bewertung).slice(0, 10)
+    [...$aktiveRestaurants].sort((a, b) => schnittVon(b) - schnittVon(a)).slice(0, 10)
   );
 </script>
 
@@ -247,23 +235,30 @@
         <span class="auth-hero-icon">🍕</span>
         <h2>Lieferino Account</h2>
         <p>
-          {#if loginSchritt === 1}Schritt 1 / 3 – Login-Daten
+          {#if zeigeAbschluss}Fast geschafft – bestätigen & absichern 🔐
+          {:else if loginSchritt === 1}Schritt 1 / 3 – Login-Daten
           {:else if loginSchritt === 2}Schritt 2 / 3 – Deine Angaben
           {:else}Schritt 3 / 3 – Lieferadresse{/if}
         </p>
       </div>
 
-      <!-- Schrittanzeige -->
-      <div class="step-dots">
-        <span class="dot" class:aktiv={loginSchritt >= 1}></span>
-        <span class="dot-line"></span>
-        <span class="dot" class:aktiv={loginSchritt >= 2}></span>
-        <span class="dot-line"></span>
-        <span class="dot" class:aktiv={loginSchritt >= 3}></span>
-      </div>
+      <!-- Schrittanzeige (nur während des Formulars) -->
+      {#if !zeigeAbschluss}
+        <div class="step-dots">
+          <span class="dot" class:aktiv={loginSchritt >= 1}></span>
+          <span class="dot-line"></span>
+          <span class="dot" class:aktiv={loginSchritt >= 2}></span>
+          <span class="dot-line"></span>
+          <span class="dot" class:aktiv={loginSchritt >= 3}></span>
+        </div>
+      {/if}
+
+      <!-- ── Abschluss: E-Mail-Code bestätigen + MFA einrichten ── -->
+      {#if zeigeAbschluss}
+        <AuthVollenden start="verify" email={emailInput} onFertig={abschlussFertig} />
 
       <!-- ── Schritt 1: E-Mail + Passwort ── -->
-      {#if loginSchritt === 1 && !zeigeVerifizierung}
+      {:else if loginSchritt === 1}
         <form onsubmit={geheZuSchritt2} class="auth-form">
           <div class="field">
             <label for="email">E-Mail</label>
@@ -293,32 +288,6 @@
           </button>
           <p class="auth-hint">Schon registriert? <a href="/login">Hier einloggen 🔑</a></p>
         </form>
-
-      <!-- ── E-Mail Verifizierung ── -->
-      {:else if loginSchritt === 1 && zeigeVerifizierung}
-        <div class="auth-form">
-          <p class="verify-text">Wir haben einen 6-stelligen Code an <strong>{emailInput}</strong> geschickt.</p>
-          {#if testCodeHinweis}
-            <div class="test-hint">🧪 Test-Code: <strong>{testCodeHinweis}</strong></div>
-          {/if}
-          <form onsubmit={bestaetigeCode}>
-            <div class="field">
-              <label for="code">Verifizierungscode</label>
-              <input type="text" id="code" placeholder="123456" maxlength="6" bind:value={eingegebenerCode} required />
-              {#if codeFehler}<p class="err">{codeFehler}</p>{/if}
-            </div>
-            <div class="btn-row">
-              <button type="button" class="ghost-btn" onclick={() => zeigeVerifizierung = false}>← Zurück</button>
-              <button type="submit" class="gold-btn flex1">Code bestätigen ✅</button>
-            </div>
-          </form>
-          <button type="button" class="text-btn" onclick={codeErneutSenden}>Code erneut senden 🔁</button>
-          {#if dev}
-            <button type="button" class="dev-btn" onclick={() => { zeigeVerifizierung = false; loginSchritt = 2; }}>
-              🛠️ Dev: überspringen
-            </button>
-          {/if}
-        </div>
 
       <!-- ── Schritt 2: Persönliche Daten ── -->
       {:else if loginSchritt === 2}
@@ -465,7 +434,7 @@
             <span class="rank">{index + 1}</span>
             <div class="card-img emoji-bild">
               <span class="emoji-big">{restaurant.emoji}</span>
-              <span class="star-badge">⭐ {restaurant.bewertung}</span>
+              <span class="star-badge">⭐ {schnittVon(restaurant).toFixed(1)}</span>
             </div>
             <!-- Blur-Label: das Apple-Musik-Muster -->
             <div class="card-blur-label">
@@ -491,7 +460,7 @@
         <a href="/restaurant/{restaurant.slug}" class="grid-card">
           <div class="card-img emoji-bild">
             <span class="emoji-big">{restaurant.emoji}</span>
-            <span class="star-badge">⭐ {restaurant.bewertung}</span>
+            <span class="star-badge">⭐ {schnittVon(restaurant).toFixed(1)}</span>
           </div>
           <!-- Blur-Label -->
           <div class="card-blur-label">
@@ -684,30 +653,6 @@
   }
   .ghost-btn:hover { background: rgba(255,248,220,0.12) !important; }
 
-  .text-btn {
-    background: none !important;
-    border: none !important;
-    color: var(--gold-text) !important;
-    font-size: 0.84rem !important;
-    cursor: pointer !important;
-    padding: 4px 0 !important;
-    text-decoration: underline;
-  }
-
-  .dev-btn {
-    display: block;
-    width: 100%;
-    margin-top: 8px;
-    padding: 10px !important;
-    background: rgba(255,248,220,0.06) !important;
-    border: 1px dashed rgba(230,168,0,0.30) !important;
-    border-radius: 10px !important;
-    color: rgba(249,201,50,0.70) !important;
-    font-weight: 600 !important;
-    font-size: 0.82rem !important;
-    cursor: pointer !important;
-  }
-
   .plus-btn {
     width: 40px !important;
     height: 40px !important;
@@ -747,10 +692,6 @@
   .err-list li { color: #ff6961; font-size: 0.8rem; line-height: 1.5; }
   .auth-hint { text-align: center; font-size: 0.84rem; color: var(--text-muted); margin: 4px 0 0; }
   .auth-hint a { color: var(--gold-text); font-weight: 600; }
-  .verify-text { color: var(--text-muted); font-size: 0.88rem; line-height: 1.5; }
-  .verify-text strong { color: var(--text); }
-  .test-hint { background: rgba(230,168,0,0.10); border: 1px dashed rgba(230,168,0,0.35); border-radius: 10px; padding: 9px 12px; color: rgba(249,201,50,0.80); font-size: 0.82rem; }
-  .test-hint strong { color: var(--gold-text); }
 
   /* ══════════════════════════════════════════════════════════════
      STARTSEITE

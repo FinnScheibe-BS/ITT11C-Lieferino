@@ -17,9 +17,11 @@ export function loescheToken() {
 
 // Zentraler fetch-Helfer: hängt JSON-Header + JWT-Token an und liefert
 // ein einheitliches Ergebnis { ok, status, daten }.
-export async function api(pfad, { method = 'GET', body } = {}) {
+// Mit "token" kann man bewusst einen anderen Token mitgeben (z.B. das kurzlebige
+// Setup-/MFA-Token), ohne den gespeicherten Haupt-Token zu überschreiben.
+export async function api(pfad, { method = 'GET', body, token } = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  const t = getToken();
+  const t = token || getToken();
   if (t) headers['Authorization'] = 'Bearer ' + t;
 
   try {

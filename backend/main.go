@@ -22,6 +22,7 @@ func main() {
 
 	cfg := config.Laden()
 	database.Verbinden(cfg)
+	seedMenu() // Verkäufer + Produkte in die DB laden (einmalig)
 
 	r := gin.Default()
 	// 🛡️ Keinem Proxy-Header blind vertrauen (Backend ist direkt erreichbar).
@@ -52,8 +53,11 @@ func main() {
 		// 🛡️ E-Mail-Versand gegen Spam begrenzen (pro IP).
 		api.POST("/email", middleware.RateLimit(5, time.Minute), handlers.SendeEmail)
 
-		// Öffentlich: Bewertungen eines Restaurants lesen
+		// Öffentlich: Verkäufer + Produkte (aus der DB) und Bewertungen lesen
+		api.GET("/restaurants", handlers.ListRestaurants)
+		api.GET("/restaurants/:slug/products", handlers.ListProducts)
 		api.GET("/restaurants/:slug/reviews", handlers.ListReviews)
+		api.GET("/reviews/schnitt", handlers.ReviewSchnitt)
 
 		// 🔒 Geschützte Routen (brauchen ein gültiges JWT-Token)
 		geschuetzt := api.Group("")
@@ -63,6 +67,7 @@ func main() {
 			geschuetzt.PUT("/me", handlers.MeUpdate)
 			geschuetzt.POST("/orders", handlers.BestellungAnlegen)
 			geschuetzt.GET("/orders", handlers.Bestellungen)
+			geschuetzt.GET("/orders/:nummer/status", handlers.BestellStatus)
 
 			// Bewertungen schreiben (nur nach Bestellung)
 			geschuetzt.POST("/restaurants/:slug/reviews", handlers.AddReview)

@@ -1,31 +1,53 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { api, getToken } from '$lib/api.js';
 
   // 🚚 LIVE-TRACKING der zuletzt aufgegebenen Bestellung.
-  // Der Status wird aus der vergangenen Zeit seit der Bestellung berechnet.
+  // Eingeloggt: der Status kommt SERVERSEITIG (manipulationssicher) vom Backend.
+  // Sonst: lokale Berechnung aus der vergangenen Zeit (Fallback / offline).
 
-  const PHASEN = ['Bestellung erhalten', 'Wird zubereitet', 'Unterwegs', 'Geliefert'];
-
+  let PHASEN = $state(['Bestellung erhalten', 'Wird zubereitet', 'Unterwegs', 'Geliefert']);
   let bestellung = $state(null);
   let phase = $state(0);
   let timer;
 
-  function berechnePhase() {
+  // 🗄️ Status vom Backend holen.
+  async function ladeStatusVomBackend() {
+    if (!bestellung?.nummer || !getToken()) return;
+    const res = await api('/api/orders/' + bestellung.nummer + '/status');
+    if (res.ok && res.daten) {
+      phase = res.daten.phase;
+      if (Array.isArray(res.daten.phasen)) PHASEN = res.daten.phasen;
+    }
+  }
+
+  // Lokale Berechnung (Fallback, wenn nicht eingeloggt / Backend aus).
+  function berechnePhaseLokal() {
     if (!bestellung) return;
     const start = new Date(bestellung.datum).getTime();
-    const jetzt = Date.now();
-    // Gesamte Lieferdauer: 40 Minuten (in 4 gleiche Phasen geteilt).
-    const gesamtMs = 40 * 60 * 1000;
-    const anteil = Math.min(1, Math.max(0, (jetzt - start) / gesamtMs));
+    const gesamtMs = 30 * 60 * 1000; // 30 Min, 4 Phasen
+    const anteil = Math.min(1, Math.max(0, (Date.now() - start) / gesamtMs));
     phase = Math.min(PHASEN.length - 1, Math.floor(anteil * PHASEN.length));
   }
 
   onMount(() => {
-    const verlauf = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
-    bestellung = verlauf[0] || null; // die neueste
-    berechnePhase();
-    // Alle 5 Sekunden aktualisieren.
-    timer = setInterval(berechnePhase, 5000);
+    (async () => {
+      // Eingeloggt: neueste Bestellung + echten Status vom Backend.
+      if (getToken()) {
+        const res = await api('/api/orders');
+        if (res.ok && Array.isArray(res.daten) && res.daten.length) {
+          bestellung = res.daten[0];
+          await ladeStatusVomBackend();
+          timer = setInterval(ladeStatusVomBackend, 5000);
+          return;
+        }
+      }
+      // Fallback: lokale Kopie.
+      const verlauf = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
+      bestellung = verlauf[0] || null;
+      berechnePhaseLokal();
+      timer = setInterval(berechnePhaseLokal, 5000);
+    })();
   });
 
   onDestroy(() => clearInterval(timer));
