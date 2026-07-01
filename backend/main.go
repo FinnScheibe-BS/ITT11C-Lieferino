@@ -49,6 +49,10 @@ func main() {
 			auth.POST("/mfa/setup", handlers.MFASetup)
 			auth.POST("/mfa/enable", handlers.MFAEnable)
 			auth.POST("/mfa/verify", handlers.MFAVerify)
+			// 🔑 Passwort-Reset per E-Mail-Einmalcode
+			auth.POST("/reset-anfordern", handlers.ResetAnfordern)
+			auth.POST("/reset-code", handlers.ResetCodePruefen)
+			auth.POST("/reset-neu", handlers.ResetNeuesPasswort)
 		}
 		// 🛡️ E-Mail-Versand gegen Spam begrenzen (pro IP).
 		api.POST("/email", middleware.RateLimit(5, time.Minute), handlers.SendeEmail)
@@ -76,6 +80,19 @@ func main() {
 			geschuetzt.GET("/favorites", handlers.ListFavorites)
 			geschuetzt.POST("/favorites/:slug", handlers.AddFavorite)
 			geschuetzt.DELETE("/favorites/:slug", handlers.RemoveFavorite)
+
+			// 🛠️ Admin-Bereich (nur mit Admin-Rechten)
+			admin := geschuetzt.Group("/admin")
+			admin.Use(middleware.AdminOnly())
+			{
+				admin.GET("/stats", handlers.AdminStats)
+				admin.GET("/users", handlers.AdminUsers)
+				admin.PATCH("/users/:id/gesperrt", handlers.AdminUserSperren)
+				admin.POST("/users/:id/mfa-reset", handlers.AdminMfaReset)
+				admin.PATCH("/restaurants/:slug/aktiv", handlers.AdminRestaurantAktiv)
+				admin.GET("/reviews", handlers.AdminReviews)
+				admin.DELETE("/reviews/:id", handlers.AdminReviewLoeschen)
+			}
 		}
 	}
 

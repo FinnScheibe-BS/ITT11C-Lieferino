@@ -38,6 +38,7 @@ func tokenMitTyp(userID uint, typ string, dauer time.Duration) (string, error) {
 func vollToken(userID uint) (string, error)  { return tokenMitTyp(userID, "full", 24*time.Hour) }
 func setupToken(userID uint) (string, error) { return tokenMitTyp(userID, "setup", 15*time.Minute) }
 func mfaToken(userID uint) (string, error)   { return tokenMitTyp(userID, "mfa", 5*time.Minute) }
+func resetToken(userID uint) (string, error) { return tokenMitTyp(userID, "reset", 15*time.Minute) }
 
 // userAusToken liest die User-ID aus dem Bearer-Token UND prüft, dass es vom
 // erwarteten Typ ist (z.B. "setup"). So kann man mit einem Setup-Token nicht
@@ -113,6 +114,7 @@ func Register(c *gin.Context) {
 		Vorname:      in.Vorname,
 		Nachname:     in.Nachname,
 		Geburtsdatum: in.Geburtsdatum,
+		IstAdmin:     strings.EqualFold(in.Email, adminEmail()),
 	}
 	if err := database.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"fehler": "Nutzer konnte nicht angelegt werden"})
@@ -183,10 +185,12 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Passwort stimmt -> Fehlversuche zurücksetzen.
-	if user.Fehlversuche != 0 || user.GesperrtBis != nil {
+	// Passwort stimmt -> Fehlversuche zurücksetzen + Admin-Status synchronisieren.
+	sollAdmin := strings.EqualFold(user.Email, adminEmail())
+	if user.Fehlversuche != 0 || user.GesperrtBis != nil || user.IstAdmin != sollAdmin {
 		user.Fehlversuche = 0
 		user.GesperrtBis = nil
+		user.IstAdmin = sollAdmin
 		database.DB.Save(&user)
 	}
 
@@ -226,4 +230,12 @@ func jwtSecret() []byte {
 		s = "dev-secret-bitte-aendern"
 	}
 	return []byte(s)
+}
+
+// adminEmail liefert die E-Mail, die Admin-Rechte bekommt.
+func adminEmail() string {
+	if e := os.Getenv("ADMIN_EMAIL"); e != "" {
+		return e
+	}
+	return "admin@lieferino.de"
 }

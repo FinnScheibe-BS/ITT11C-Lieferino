@@ -13,6 +13,7 @@ type Config struct {
 	DBName     string
 	DBSSLMode  string
 	JWTSecret  string
+	AdminEmail string
 }
 
 func Laden() *Config {
@@ -26,6 +27,8 @@ func Laden() *Config {
 		// docker-compose: "disable". Bei Patroni/Spilo (K8s) z.B. "require".
 		DBSSLMode: getEnv("DB_SSLMODE", "disable"),
 		JWTSecret: getEnv("JWT_SECRET", "dev-secret-bitte-aendern"),
+		// Wer sich mit dieser E-Mail registriert/anmeldet, wird Admin.
+		AdminEmail: getEnv("ADMIN_EMAIL", "admin@lieferino.de"),
 	}
 }
 

@@ -1,7 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { warenkorb, gesamtSumme, leereWarenkorb } from '$lib/stores/cart.js';
-  import { sendeBestellBestaetigung } from '$lib/services/email.js';
   import { pruefeKarte, kartenTyp, formatiereNummer } from '$lib/services/payment.js';
   import { treuepunkte, punkteSammeln, punkteAbziehen, EINLOESE_SCHRITT, EINLOESE_WERT } from '$lib/stores/treue.js';
   import { api, getToken } from '$lib/api.js';
@@ -252,10 +251,8 @@
     if (punkteRabatt > 0) punkteAbziehen(EINLOESE_SCHRITT);
     punkteSammeln(endsumme);
 
-    // E-Mail-Bestätigung anstoßen (echter Versand erfolgt später übers Backend).
-    if (user?.email) {
-      await sendeBestellBestaetigung(user.email, bestellung, liefertermin);
-    }
+    // Die Bestellbestätigungs-E-Mail verschickt das Backend automatisch beim
+    // Anlegen der Bestellung (siehe POST /api/orders) – hier nichts nötig.
 
     // 🔔 Um Liefer-Benachrichtigungen bitten (falls noch nicht entschieden).
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
