@@ -1,19 +1,10 @@
 <script>
-  // 🔐 MFA-Funktionen
-  import { generiereSecret, otpauthUri, pruefeTotp, generiereBackupCodes } from '$lib/services/mfa.js';
   import { eingeloggt, logout } from '$lib/stores/auth.js';
   import { treuepunkte } from '$lib/stores/treue.js';
   import { api, getToken } from '$lib/api.js';
 
   let user = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
   let geladen = $state(false);
-
-  // 🔐 MFA-Einrichtungs-Zustand (nur für die Oberfläche)
-  let totpSecret = $state('');     // das gerade erzeugte Authenticator-Secret
-  let totpUri = $state('');        // die otpauth-Adresse für die App
-  let totpEingabe = $state('');    // der vom Nutzer eingegebene Test-Code
-  let totpFehler = $state('');     // Fehlermeldung bei falschem Code
-  let zeigeTotpEinrichtung = $state(false);
 
   // Edit-Modus gilt jetzt pro BEREICH (Kategorie) statt pro Feld
   let editBereich = $state({
@@ -135,62 +126,6 @@
     window.location.href = '/';
   }
 
-  // 🔐 Speichert den (geänderten) Nutzer zurück in den localStorage.
-  function speichereUser() {
-    localStorage.setItem('lieferino_user', JSON.stringify(user));
-  }
-
-  // Zeigt die frisch erzeugten Backup-Codes einmalig an.
-  let neueBackupCodes = $state([]);
-
-  // 📧 E-Mail-2FA direkt aktivieren (die E-Mail wurde bei der Registrierung
-  // bereits verifiziert, daher reicht hier ein Klick).
-  function aktiviereEmail2fa() {
-    const codes = generiereBackupCodes();
-    user.mfa = { aktiv: true, methode: 'email', backupCodes: codes };
-    neueBackupCodes = codes;
-    speichereUser();
-  }
-
-  // Erzeugt neue Backup-Codes (alte werden ungültig).
-  function backupCodesNeu() {
-    const codes = generiereBackupCodes();
-    user.mfa = { ...user.mfa, backupCodes: codes };
-    neueBackupCodes = codes;
-    speichereUser();
-  }
-
-  // 📲 Authenticator-Einrichtung starten: Secret erzeugen + otpauth-Adresse bauen.
-  function starteTotpEinrichtung() {
-    totpSecret = generiereSecret();
-    totpUri = otpauthUri(totpSecret, user.email || 'kunde');
-    totpEingabe = '';
-    totpFehler = '';
-    zeigeTotpEinrichtung = true;
-  }
-
-  // 📲 Authenticator bestätigen: Test-Code prüfen, dann 2FA aktivieren.
-  async function totpBestaetigen() {
-    const okay = await pruefeTotp(totpSecret, totpEingabe);
-    if (okay) {
-      const codes = generiereBackupCodes();
-      user.mfa = { aktiv: true, methode: 'totp', secret: totpSecret, backupCodes: codes };
-      neueBackupCodes = codes;
-      speichereUser();
-      zeigeTotpEinrichtung = false;
-      totpFehler = '';
-    } else {
-      totpFehler = 'Code stimmt nicht. Prüfe Uhrzeit/App und versuche es erneut.';
-    }
-  }
-
-  // 🔓 2FA wieder ausschalten.
-  function deaktiviereMfa() {
-    user.mfa = { aktiv: false };
-    neueBackupCodes = [];
-    speichereUser();
-    zeigeTotpEinrichtung = false;
-  }
 </script>
 
 <div class="account-container">
@@ -226,14 +161,14 @@
         </div>
 
         <div class="info-block">
-          <span class="label">Passwort ändern</span>
+          <span class="label">Passwort</span>
           <div class="block-content">
-            {#if !editBereich.login} <span class="value password-dots">••••••••</span> {:else} <input type="password" bind:value={inputs.passwort} placeholder="Neues Passwort eingeben..." class="inline-input" /> {/if}
+            <a href="/passwort-vergessen" class="value pw-link">Passwort ändern 🔑</a>
           </div>
         </div>
 
         {#if editBereich.login}
-          <button onclick={() => bereichSpeichern('login', ['username', 'email', 'passwort'])} class="save-group-btn">💾 Logindaten speichern</button>
+          <button onclick={() => bereichSpeichern('login', ['username', 'email'])} class="save-group-btn">💾 Logindaten speichern</button>
         {/if}
       </div>
 
@@ -365,56 +300,15 @@
           <h3 class="category-title">🔐 Zwei-Faktor-Authentifizierung (2FA)</h3>
         </div>
 
-        {#if user.mfa?.aktiv}
-          <!-- 2FA ist an -->
-          <p class="mfa-status an">
-            ✅ Aktiv – Methode: {user.mfa.methode === 'totp' ? 'Authenticator-App' : 'E-Mail-Code'}
-          </p>
-
-          <!-- 🆘 Frisch erzeugte Backup-Codes (nur einmalig anzeigen) -->
-          {#if neueBackupCodes.length > 0}
-            <div class="backup-box">
-              <p class="backup-titel">🆘 Deine Backup-Codes – jetzt notieren!</p>
-              <p class="mfa-mini">Jeder Code funktioniert einmal, falls du keinen Zugriff auf deinen zweiten Faktor hast.</p>
-              <div class="backup-codes">
-                {#each neueBackupCodes as code}<code>{code}</code>{/each}
-              </div>
-            </div>
-          {:else}
-            <p class="mfa-info">🆘 Noch {user.mfa.backupCodes?.length ?? 0} Backup-Codes übrig.</p>
-          {/if}
-
-          <div class="mfa-btn-row">
-            <button onclick={backupCodesNeu} class="mfa-btn grau">Neue Backup-Codes</button>
-            <button onclick={deaktiviereMfa} class="mfa-btn aus">2FA deaktivieren</button>
-          </div>
-        {:else if zeigeTotpEinrichtung}
-          <!-- Authenticator-Einrichtung -->
-          <p class="mfa-info">1. Füge dieses Konto in deiner Authenticator-App hinzu:</p>
-          <div class="totp-secret">
-            <span class="label">Secret (manuell eingeben)</span>
-            <code>{totpSecret}</code>
-          </div>
-          <p class="mfa-mini">Oder diese Adresse in der App öffnen:</p>
-          <code class="totp-uri">{totpUri}</code>
-
-          <p class="mfa-info">2. Gib den 6-stelligen Code aus der App ein:</p>
-          <input type="text" maxlength="6" placeholder="z.B. 123456" bind:value={totpEingabe} class="inline-input" />
-          {#if totpFehler}<p class="mfa-fehler">{totpFehler}</p>{/if}
-
-          <div class="mfa-btn-row">
-            <button onclick={() => (zeigeTotpEinrichtung = false)} class="mfa-btn grau">Abbrechen</button>
-            <button onclick={totpBestaetigen} class="mfa-btn">Aktivieren ✅</button>
-          </div>
+        {#if user.mfaAktiv}
+          <p class="mfa-status an">✅ Aktiv – Authenticator-App</p>
         {:else}
-          <!-- 2FA ist aus: Methode wählen -->
-          <p class="mfa-status aus">⚠️ Nicht aktiv – dein Konto ist nur mit dem Passwort geschützt.</p>
-          <p class="mfa-info">Schütze dein Konto mit einem zweiten Faktor:</p>
-          <div class="mfa-btn-row">
-            <button onclick={aktiviereEmail2fa} class="mfa-btn">📧 Per E-Mail-Code</button>
-            <button onclick={starteTotpEinrichtung} class="mfa-btn">📲 Per Authenticator-App</button>
-          </div>
+          <p class="mfa-status aus">⚠️ Nicht aktiv</p>
         {/if}
+        <p class="mfa-info">
+          Die Zwei-Faktor-Authentifizierung ist <strong>Pflicht</strong> und wird bei jeder Anmeldung
+          abgefragt. Sie wurde bei der Registrierung mit deiner Authenticator-App eingerichtet.
+        </p>
       </div>
 
       <button onclick={ausloggen} class="logout-btn">🔴 Ausloggen</button>
@@ -477,8 +371,8 @@
   .value { font-size: 1.05rem; color: #222; font-weight: 700; padding: 4px 0; display: inline-block; }
   .email-value { color: #673ab7; }
   .placeholder-text { color: #ccc; font-weight: 400; font-style: italic; font-size: 0.95rem; }
-  .password-dots { letter-spacing: 2px; color: #673ab7; }
-  
+  .pw-link { color: #673ab7; }
+
   .inline-input { width: 100%; padding: 10px; border: 2px solid #e1bee7; border-radius: 8px; font-size: 0.95rem; font-family: sans-serif; font-weight: 600; box-sizing: border-box; outline: none; background: #fff; }
   .inline-input:focus { border-color: #673ab7; }
   
@@ -489,20 +383,9 @@
   .mfa-status.an { color: #34c759; }
   .mfa-status.aus { color: #d97706; }
   .mfa-info { font-size: 0.9rem; color: #555; margin: 6px 0; }
-  .mfa-mini { font-size: 0.82rem; color: #888; margin: 10px 0 4px; }
-  .mfa-fehler { color: #dc3545; font-weight: 600; font-size: 0.85rem; margin: 6px 0 0; }
-  .mfa-btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
   .mfa-btn { flex: 1; min-width: 140px; padding: 12px; background: #673ab7; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
   .mfa-btn:hover { background: #542f95; }
   .mfa-btn.grau { background: #f1f1f1; color: #333; }
-  .mfa-btn.aus { background: #fff; color: #dc3545; border: 2px solid #dc3545; }
-  .totp-secret { background: #faf7ff; border: 1px dashed #b39ddb; border-radius: 10px; padding: 10px; margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
-  .totp-secret code { font-size: 1.2rem; letter-spacing: 2px; color: #673ab7; font-weight: bold; }
-  .totp-uri { display: block; word-break: break-all; background: #f5f5f5; padding: 8px; border-radius: 8px; font-size: 0.75rem; color: #555; }
-  .backup-box { background: #fff8e1; border: 1px dashed #ffc107; border-radius: 12px; padding: 12px; margin: 8px 0; }
-  .backup-titel { font-weight: bold; color: #8a6d00; margin: 0 0 4px; }
-  .backup-codes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
-  .backup-codes code { background: #fff; border: 1px solid #eee; border-radius: 6px; padding: 6px; text-align: center; font-weight: bold; letter-spacing: 1px; color: #673ab7; }
 
   /* ⭐ Treuepunkte */
   .punkte-zahl { font-size: 1.6rem; font-weight: 800; color: #673ab7; margin: 0; }
