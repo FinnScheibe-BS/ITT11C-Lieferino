@@ -64,6 +64,7 @@ type User struct {
 	Geburtsdatum string    `json:"geburtsdatum"`
 	Gesperrt     bool      `gorm:"default:false" json:"gesperrt"`
 	IstAdmin     bool      `gorm:"default:false" json:"istAdmin"`
+	Treuepunkte  int       `gorm:"default:0" json:"treuepunkte"`
 	Adressen     []Address `json:"adressen"`
 	CreatedAt    time.Time `json:"createdAt"`
 
@@ -166,6 +167,29 @@ type Favorite struct {
 	ID             uint   `gorm:"primaryKey" json:"id"`
 	UserID         uint   `gorm:"index" json:"-"`
 	RestaurantSlug string `json:"slug"`
+}
+
+// Sensible Auth-Geheimnisse (MFA-Secret, Codes) werden in der DB NICHT im
+// Klartext abgelegt – sonst könnte man bei DB-Zugriff die 2FA klonen.
+func (u *User) BeforeSave(tx *gorm.DB) error {
+	u.MFASecret = _enc(u.MFASecret)
+	u.EmailCode = _enc(u.EmailCode)
+	u.ResetCode = _enc(u.ResetCode)
+	return nil
+}
+
+func (u *User) AfterSave(tx *gorm.DB) error {
+	u.MFASecret = _dec(u.MFASecret)
+	u.EmailCode = _dec(u.EmailCode)
+	u.ResetCode = _dec(u.ResetCode)
+	return nil
+}
+
+func (u *User) AfterFind(tx *gorm.DB) error {
+	u.MFASecret = _dec(u.MFASecret)
+	u.EmailCode = _dec(u.EmailCode)
+	u.ResetCode = _dec(u.ResetCode)
+	return nil
 }
 
 // Adressdaten werden in der Datenbank nicht im Klartext abgelegt.

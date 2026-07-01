@@ -22,13 +22,33 @@ type orderItemInput struct {
 }
 
 type orderInput struct {
-	Zwischensumme float64          `json:"zwischensumme"`
-	Trinkgeld     float64          `json:"trinkgeld"`
-	Summe         float64          `json:"summe"`
-	Gutschein     string           `json:"gutschein"`
-	Zahlungsart   string           `json:"zahlungsart"`
-	Liefertermin  string           `json:"liefertermin"`
-	Positionen    []orderItemInput `json:"positionen"`
+	Zwischensumme   float64          `json:"zwischensumme"`
+	Trinkgeld       float64          `json:"trinkgeld"`
+	Summe           float64          `json:"summe"`
+	Gutschein       string           `json:"gutschein"`
+	PunkteEinloesen bool             `json:"punkteEinloesen"`
+	Zahlungsart     string           `json:"zahlungsart"`
+	Liefertermin    string           `json:"liefertermin"`
+	Positionen      []orderItemInput `json:"positionen"`
+}
+
+// 🎟️ Server-seitige Regeln (müssen mit dem Checkout übereinstimmen).
+const lieferGebuehr = 2.49
+const punkteSchritt = 100  // so viele Punkte kann man einlösen ...
+const punkteWert = 5.0     // ... = so viel € Rabatt
+const punkteProEuro = 1
+
+type gutscheinDef struct {
+	Typ  string // "prozent" | "betrag" | "lieferung"
+	Wert float64
+}
+
+var gutscheine = map[string]gutscheinDef{
+	"LIEFERINO10": {"prozent", 10},
+	"WILLKOMMEN5": {"betrag", 5},
+	"GRATIS":      {"lieferung", 0},
+	"PIZZAPARTY":  {"prozent", 25},
+	"GEBURTSTAG":  {"prozent", 20},
 }
 
 // 📦 BestellungAnlegen speichert eine neue Bestellung für den eingeloggten Nutzer.
@@ -74,11 +94,54 @@ func BestellungAnlegen(c *gin.Context) {
 		})
 		return
 	}
-	// Die echte Zwischensumme verwenden + sicherstellen, dass die Endsumme
-	// nicht unter die Artikelkosten (minus Trinkgeld) gedrückt wurde.
 	in.Zwischensumme = echteZwischensumme
 	if in.Trinkgeld < 0 {
 		in.Trinkgeld = 0
+	}
+
+	// 🛡️ Mindestbestellwert des Restaurants serverseitig prüfen.
+	var rest models.Restaurant
+	if err := database.DB.
+		Where("name = ? OR slug = ?", in.Positionen[0].Restaurant, in.Positionen[0].Restaurant).
+		First(&rest).Error; err == nil && echteZwischensumme < rest.MinBestell {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"fehler": fmt.Sprintf("Mindestbestellwert von %.2f € nicht erreicht.", rest.MinBestell),
+		})
+		return
+	}
+
+	// 🎟️ Gutschein serverseitig auswerten (nur bekannte Codes wirken).
+	rabatt := 0.0
+	lieferkosten := lieferGebuehr
+	code := strings.ToUpper(strings.TrimSpace(in.Gutschein))
+	if g, ok := gutscheine[code]; ok {
+		switch g.Typ {
+		case "prozent":
+			rabatt = echteZwischensumme * g.Wert / 100
+		case "betrag":
+			rabatt = math.Min(g.Wert, echteZwischensumme)
+		case "lieferung":
+			lieferkosten = 0
+		}
+		in.Gutschein = code
+	} else {
+		in.Gutschein = "" // ungültiger/leerer Code -> kein Rabatt
+	}
+
+	// ⭐ Treuepunkte einlösen (nur wenn genug vorhanden) – serverseitig geprüft.
+	var user models.User
+	database.DB.First(&user, userID)
+	punkteRabatt := 0.0
+	punkteAbzug := 0
+	if in.PunkteEinloesen && user.Treuepunkte >= punkteSchritt {
+		punkteRabatt = punkteWert
+		punkteAbzug = punkteSchritt
+	}
+
+	// 🧮 Autoritative Endsumme (NICHT der Client-Wert).
+	in.Summe = echteZwischensumme - rabatt - punkteRabatt + lieferkosten + in.Trinkgeld
+	if in.Summe < 0 {
+		in.Summe = 0
 	}
 
 	// Bestellnummer erzeugen, z.B. "LF-7F3A9C".
@@ -109,9 +172,15 @@ func BestellungAnlegen(c *gin.Context) {
 		return
 	}
 
+	// ⭐ Treuepunkte aktualisieren: eingelöste abziehen + neue sammeln (1 pro € Artikelwert).
+	neuePunkte := user.Treuepunkte - punkteAbzug + int(echteZwischensumme)*punkteProEuro
+	if neuePunkte < 0 {
+		neuePunkte = 0
+	}
+	database.DB.Model(&models.User{}).Where("id = ?", userID).Update("treuepunkte", neuePunkte)
+
 	// 📧 Bestellbestätigung per E-Mail (im Hintergrund, blockiert die Antwort nicht).
-	var user models.User
-	if err := database.DB.First(&user, userID).Error; err == nil && user.Email != "" {
+	if user.Email != "" {
 		betreff := "Deine Lieferino-Bestellung " + order.Nummer + " 🍕"
 		text := bestellBestaetigungText(&user, &order)
 		go func() { _, _ = sendeMail(user.Email, betreff, text) }()

@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { restaurants, getRestaurant } from '$lib/data';
+import { api } from '$lib/api.js';
 
 // 🔌 AKTIV/DEAKTIVIERT-STATUS DER LIEFERANTEN
 // Die Basis-Restaurants kommen aus der (unveränderlichen) zentralen Quelle.
@@ -80,12 +81,26 @@ export function geheimFreischalten() {
   geheimFreigeschaltet.set(true);
 }
 
+// 🗄️ Vom Backend (Admin) deaktivierte Restaurants – serverseitig gesteuert.
+export const dbDeaktiviert = writable([]);
+
+export async function ladeAktivStatus() {
+  const res = await api('/api/restaurants');
+  if (res.ok && Array.isArray(res.daten)) {
+    dbDeaktiviert.set(res.daten.filter((r) => r.aktiv === false).map((r) => r.slug));
+  }
+}
+
+// Beim Start den echten Aktiv/Deaktiv-Status vom Backend holen.
+if (browser) ladeAktivStatus();
+
 // Nur die AKTIVEN Restaurants – für alle öffentlichen Listen (normale Nutzer).
-// Wenn das Geheim-Restaurant freigeschaltet ist, kommt es oben dazu.
+// Ausgeblendet wird, wer lokal ODER im Backend deaktiviert ist.
 export const aktiveRestaurants = derived(
-  [deaktivierteLieferanten, geheimFreigeschaltet],
-  ([$deaktiviert, $geheim]) => {
-    const sichtbar = restaurants.filter((r) => !$deaktiviert.includes(r.slug));
+  [deaktivierteLieferanten, dbDeaktiviert, geheimFreigeschaltet],
+  ([$deaktiviert, $dbDeaktiviert, $geheim]) => {
+    const aus = new Set([...$deaktiviert, ...$dbDeaktiviert]);
+    const sichtbar = restaurants.filter((r) => !aus.has(r.slug));
     return $geheim ? [GEHEIMES_RESTAURANT, ...sichtbar] : sichtbar;
   }
 );

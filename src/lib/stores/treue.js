@@ -1,12 +1,11 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
+import { api, getToken } from '$lib/api.js';
 
 // ⭐ TREUEPUNKTE
-// Pro ausgegebenem Euro gibt es 1 Punkt. Punkte kann man im Checkout einlösen
-// (100 Punkte = 5 € Rabatt). Alles lokal im localStorage.
-//
-// 🚨 BACKEND-HINWEIS: Treuepunkte müssen später serverseitig (pro Konto) gespeichert
-// werden, sonst kann man sie im Browser einfach manipulieren.
+// Der ECHTE Punktestand liegt jetzt SERVERSEITIG am Konto (manipulationssicher).
+// Sammeln/Einlösen passiert beim Bestellen im Backend. Der localStorage-Wert ist
+// nur ein Cache für die Anzeige (nicht eingeloggt / offline).
 
 export const PUNKTE_PRO_EURO = 1;
 export const EINLOESE_SCHRITT = 100; // 100 Punkte ...
@@ -23,12 +22,14 @@ if (browser) {
   treuepunkte.subscribe((p) => localStorage.setItem('lieferino_treuepunkte', String(p)));
 }
 
-// Punkte für einen Bestellbetrag gutschreiben.
-export function punkteSammeln(betrag) {
-  treuepunkte.update((p) => p + Math.floor(betrag * PUNKTE_PRO_EURO));
+// 🗄️ Echten Punktestand vom Backend (Konto) laden.
+export async function ladeTreuepunkte() {
+  if (!getToken()) return;
+  const res = await api('/api/me');
+  if (res.ok && res.daten && typeof res.daten.treuepunkte === 'number') {
+    treuepunkte.set(res.daten.treuepunkte);
+  }
 }
 
-// Punkte abziehen (beim Einlösen).
-export function punkteAbziehen(anzahl) {
-  treuepunkte.update((p) => Math.max(0, p - anzahl));
-}
+// Beim Start (eingeloggt) gleich den echten Stand holen.
+if (browser) ladeTreuepunkte();

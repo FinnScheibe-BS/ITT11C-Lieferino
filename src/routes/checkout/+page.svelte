@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { warenkorb, gesamtSumme, leereWarenkorb } from '$lib/stores/cart.js';
   import { pruefeKarte, kartenTyp, formatiereNummer } from '$lib/services/payment.js';
-  import { treuepunkte, punkteSammeln, punkteAbziehen, EINLOESE_SCHRITT, EINLOESE_WERT } from '$lib/stores/treue.js';
+  import { treuepunkte, ladeTreuepunkte, EINLOESE_SCHRITT, EINLOESE_WERT } from '$lib/stores/treue.js';
   import { api, getToken } from '$lib/api.js';
 
   const LIEFERGEBUEHR = 2.49;
@@ -214,6 +214,7 @@
           zwischensumme: $gesamtSumme,
           trinkgeld,
           gutschein: aktiverGutschein?.code || '',
+          punkteEinloesen,
           zahlungsart,
           liefertermin,
           positionen: $warenkorb.map((a) => ({
@@ -247,9 +248,8 @@
     // Für die Rechnung merken (der Warenkorb wird gleich geleert).
     letzteBestellung = bestellung;
 
-    // ⭐ Treuepunkte: ggf. eingelöste Punkte abziehen, dann neue Punkte sammeln.
-    if (punkteRabatt > 0) punkteAbziehen(EINLOESE_SCHRITT);
-    punkteSammeln(endsumme);
+    // ⭐ Treuepunkte hat das Backend beim Bestellen aktualisiert -> echten Stand neu laden.
+    await ladeTreuepunkte();
 
     // Die Bestellbestätigungs-E-Mail verschickt das Backend automatisch beim
     // Anlegen der Bestellung (siehe POST /api/orders) – hier nichts nötig.
