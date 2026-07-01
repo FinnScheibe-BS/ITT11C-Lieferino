@@ -2,6 +2,7 @@
   import { eingeloggt, logout } from '$lib/stores/auth.js';
   import { treuepunkte } from '$lib/stores/treue.js';
   import { api, getToken } from '$lib/api.js';
+  import { t } from '$lib/i18n.js';
 
   let user = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
   let geladen = $state(false);
@@ -131,8 +132,8 @@
 <div class="account-container">
   
   <div class="hero-box">
-    <h2>👤 Mein Lieferino Profil</h2>
-    <p>Verwalte deine Daten und Lieferadressen</p>
+    <h2>{$t('acc.title')}</h2>
+    <p>{$t('acc.subtitle')}</p>
   </div>
 
   {#if $eingeloggt && geladen}
@@ -140,58 +141,58 @@
       
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">🔐 Logindaten</h3>
+          <h3 class="category-title">{$t('acc.login_data')}</h3>
           {#if !editBereich.login}
-            <button onclick={() => editBereich.login = true} class="edit-icon-btn" title="Gruppe bearbeiten">✏️ Bearbeiten</button>
+            <button onclick={() => editBereich.login = true} class="edit-icon-btn" title="Gruppe bearbeiten">{$t('acc.edit')}</button>
           {/if}
         </div>
         
         <div class="info-block">
-          <span class="label">Username</span>
+          <span class="label">{$t('acc.username')}</span>
           <div class="block-content">
             {#if !editBereich.login} <span class="value">@{user.username}</span> {:else} <input type="text" bind:value={inputs.username} class="inline-input" /> {/if}
           </div>
         </div>
 
         <div class="info-block">
-          <span class="label">E-Mail Adresse</span>
+          <span class="label">{$t('auth.email')}</span>
           <div class="block-content">
             {#if !editBereich.login} <span class="value email-value">{user.email}</span> {:else} <input type="email" bind:value={inputs.email} class="inline-input" /> {/if}
           </div>
         </div>
 
         <div class="info-block">
-          <span class="label">Passwort</span>
+          <span class="label">{$t('auth.password')}</span>
           <div class="block-content">
-            <a href="/passwort-vergessen" class="value pw-link">Passwort ändern 🔑</a>
+            <a href="/passwort-vergessen" class="value pw-link">{$t('acc.change_pw')}</a>
           </div>
         </div>
 
         {#if editBereich.login}
-          <button onclick={() => bereichSpeichern('login', ['username', 'email'])} class="save-group-btn">💾 Logindaten speichern</button>
+          <button onclick={() => bereichSpeichern('login', ['username', 'email'])} class="save-group-btn">{$t('acc.save_login')}</button>
         {/if}
       </div>
 
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">👤 Persönliche Daten</h3>
+          <h3 class="category-title">{$t('acc.personal')}</h3>
           {#if !editBereich.persoenlich}
-            <button onclick={() => editBereich.persoenlich = true} class="edit-icon-btn" title="Gruppe bearbeiten">✏️ Bearbeiten</button>
+            <button onclick={() => editBereich.persoenlich = true} class="edit-icon-btn" title="Gruppe bearbeiten">{$t('acc.edit')}</button>
           {/if}
         </div>
 
         <div class="info-block">
-          <span class="label">Vorname</span>
+          <span class="label">{$t('acc.firstname')}</span>
           <div class="block-content">
             {#if !editBereich.persoenlich} <span class="value">{user.vorname}</span> {:else} <input type="text" bind:value={inputs.vorname} class="inline-input" /> {/if}
           </div>
         </div>
 
         <div class="info-block">
-          <span class="label">Zweiter Vorname</span>
+          <span class="label">{$t('acc.middlename')}</span>
           <div class="block-content">
-            {#if !editBereich.persoenlich} 
-              <span class="value {user.zweitname ? '' : 'placeholder-text'}">{user.zweitname ? user.zweitname : "Kein Zweitname"}</span> 
+            {#if !editBereich.persoenlich}
+              <span class="value {user.zweitname ? '' : 'placeholder-text'}">{user.zweitname ? user.zweitname : $t('acc.no_middle')}</span>
             {:else} 
               <input type="text" bind:value={inputs.zweitname} placeholder="Optional" class="inline-input" /> 
             {/if}
@@ -199,35 +200,35 @@
         </div>
 
         <div class="info-block">
-          <span class="label">Nachname</span>
+          <span class="label">{$t('acc.lastname')}</span>
           <div class="block-content">
             {#if !editBereich.persoenlich} <span class="value">{user.nachname}</span> {:else} <input type="text" bind:value={inputs.nachname} class="inline-input" /> {/if}
           </div>
         </div>
 
         {#if editBereich.persoenlich}
-          <button onclick={() => bereichSpeichern('persoenlich', ['vorname', 'zweitname', 'nachname'])} class="save-group-btn">💾 Namen speichern</button>
+          <button onclick={() => bereichSpeichern('persoenlich', ['vorname', 'zweitname', 'nachname'])} class="save-group-btn">{$t('acc.save_names')}</button>
         {/if}
       </div>
 
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">🏠 Lieferadresse</h3>
+          <h3 class="category-title">{$t('acc.address')}</h3>
           {#if !editBereich.adresse}
-            <button onclick={() => editBereich.adresse = true} class="edit-icon-btn" title="Gruppe bearbeiten">✏️ Bearbeiten</button>
+            <button onclick={() => editBereich.adresse = true} class="edit-icon-btn" title="Gruppe bearbeiten">{$t('acc.edit')}</button>
           {/if}
         </div>
 
         <div class="split-row">
           <div class="info-block grow">
-            <span class="label">Straße</span>
+            <span class="label">{$t('acc.street')}</span>
             <div class="block-content">
               {#if !editBereich.adresse} <span class="value">{user.strasse}</span> {:else} <input type="text" bind:value={inputs.strasse} class="inline-input" /> {/if}
             </div>
           </div>
 
           <div class="info-block narrow">
-            <span class="label">Nr.</span>
+            <span class="label">{$t('acc.number')}</span>
             <div class="block-content">
               {#if !editBereich.adresse} <span class="value">{user.hausnummer}</span> {:else} <input type="text" bind:value={inputs.hausnummer} class="inline-input" /> {/if}
             </div>
@@ -236,14 +237,14 @@
 
         <div class="split-row">
           <div class="info-block narrow">
-            <span class="label">PLZ</span>
+            <span class="label">{$t('acc.zip')}</span>
             <div class="block-content">
               {#if !editBereich.adresse} <span class="value">{user.plz}</span> {:else} <input type="text" bind:value={inputs.plz} class="inline-input" /> {/if}
             </div>
           </div>
 
           <div class="info-block grow">
-            <span class="label">Ort</span>
+            <span class="label">{$t('acc.city')}</span>
             <div class="block-content">
               {#if !editBereich.adresse} <span class="value">{user.ort}</span> {:else} <input type="text" bind:value={inputs.ort} class="inline-input" /> {/if}
             </div>
@@ -251,23 +252,23 @@
         </div>
 
         {#if editBereich.adresse}
-          <button onclick={() => bereichSpeichern('adresse', ['strasse', 'hausnummer', 'plz', 'ort'])} class="save-group-btn">💾 Adresse speichern</button>
+          <button onclick={() => bereichSpeichern('adresse', ['strasse', 'hausnummer', 'plz', 'ort'])} class="save-group-btn">{$t('acc.save_address')}</button>
         {/if}
       </div>
 
       <!-- ⭐ TREUEPUNKTE -->
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">⭐ Treuepunkte</h3>
+          <h3 class="category-title">{$t('acc.points_title')}</h3>
         </div>
-        <p class="punkte-zahl">{$treuepunkte} Punkte</p>
-        <p class="punkte-hint">Sammle 1 Punkt je 1€ Bestellwert. 100 Punkte = 5€ Rabatt im Checkout.</p>
+        <p class="punkte-zahl">{$t('acc.points_n').replace('{n}', $treuepunkte)}</p>
+        <p class="punkte-hint">{$t('acc.points_hint')}</p>
       </div>
 
       <!-- 📍 WEITERE ADRESSEN -->
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">📍 Meine Adressen</h3>
+          <h3 class="category-title">{$t('acc.my_addresses')}</h3>
         </div>
 
         {#each user.adressen || [] as adr, i}
@@ -281,55 +282,52 @@
 
         <!-- Neue Adresse hinzufügen -->
         <form class="adress-form" onsubmit={adresseHinzufuegen}>
-          <input type="text" placeholder="Bezeichnung (z.B. Arbeit)" bind:value={neueAdresse.label} />
+          <input type="text" placeholder={$t('acc.addr_label_ph')} bind:value={neueAdresse.label} />
           <div class="adr-row">
-            <input type="text" placeholder="Straße" bind:value={neueAdresse.strasse} required />
-            <input type="text" placeholder="Nr." bind:value={neueAdresse.hausnummer} required />
+            <input type="text" placeholder={$t('acc.street')} bind:value={neueAdresse.strasse} required />
+            <input type="text" placeholder={$t('acc.number')} bind:value={neueAdresse.hausnummer} required />
           </div>
           <div class="adr-row">
-            <input type="text" placeholder="PLZ" bind:value={neueAdresse.plz} required />
-            <input type="text" placeholder="Ort" bind:value={neueAdresse.ort} required />
+            <input type="text" placeholder={$t('acc.zip')} bind:value={neueAdresse.plz} required />
+            <input type="text" placeholder={$t('acc.city')} bind:value={neueAdresse.ort} required />
           </div>
-          <button type="submit" class="save-group-btn">➕ Adresse hinzufügen</button>
+          <button type="submit" class="save-group-btn">{$t('acc.add_address')}</button>
         </form>
       </div>
 
       <!-- 🔐 ZWEI-FAKTOR-AUTHENTIFIZIERUNG -->
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">🔐 Zwei-Faktor-Authentifizierung (2FA)</h3>
+          <h3 class="category-title">{$t('acc.mfa_title')}</h3>
         </div>
 
         {#if user.mfaAktiv}
-          <p class="mfa-status an">✅ Aktiv – Authenticator-App</p>
+          <p class="mfa-status an">{$t('acc.mfa_active')}</p>
         {:else}
-          <p class="mfa-status aus">⚠️ Nicht aktiv</p>
+          <p class="mfa-status aus">{$t('acc.mfa_inactive')}</p>
         {/if}
-        <p class="mfa-info">
-          Die Zwei-Faktor-Authentifizierung ist <strong>Pflicht</strong> und wird bei jeder Anmeldung
-          abgefragt. Sie wurde bei der Registrierung mit deiner Authenticator-App eingerichtet.
-        </p>
+        <p class="mfa-info">{$t('acc.mfa_info')}</p>
       </div>
 
-      <button onclick={ausloggen} class="logout-btn">🔴 Ausloggen</button>
+      <button onclick={ausloggen} class="logout-btn">{$t('acc.logout')}</button>
 
       <!-- 🗑️ Konto löschen (Gefahrenzone) -->
       {#if !loeschBestaetigung}
-        <button onclick={() => (loeschBestaetigung = true)} class="delete-btn">🗑️ Konto löschen</button>
+        <button onclick={() => (loeschBestaetigung = true)} class="delete-btn">{$t('acc.delete')}</button>
       {:else}
         <div class="delete-confirm">
-          <p>Wirklich löschen? Alle deine Daten (Konto, Bestellungen, Favoriten) gehen verloren.</p>
+          <p>{$t('acc.delete_confirm')}</p>
           <div class="delete-row">
-            <button onclick={() => (loeschBestaetigung = false)} class="mfa-btn grau">Abbrechen</button>
-            <button onclick={kontoLoeschen} class="delete-btn endgueltig">Endgültig löschen</button>
+            <button onclick={() => (loeschBestaetigung = false)} class="mfa-btn grau">{$t('acc.cancel')}</button>
+            <button onclick={kontoLoeschen} class="delete-btn endgueltig">{$t('acc.delete_final')}</button>
           </div>
         </div>
       {/if}
     </div>
   {:else}
     <div class="no-user">
-      <p>Du bist aktuell nicht eingeloggt.</p>
-      <a href="/login" class="login-redirect-btn">Zum Login 🔑</a>
+      <p>{$t('acc.not_logged')}</p>
+      <a href="/login" class="login-redirect-btn">{$t('acc.to_login')}</a>
     </div>
   {/if}
 </div>

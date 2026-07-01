@@ -1,6 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { api, getToken } from '$lib/api.js';
+  import { t } from '$lib/i18n.js';
 
   // 🚚 LIVE-TRACKING der zuletzt aufgegebenen Bestellung.
   // Eingeloggt: der Status kommt SERVERSEITIG (manipulationssicher) vom Backend.
@@ -54,43 +55,43 @@
 </script>
 
 <div class="seite">
-  <h1>🚚 Live-Tracking</h1>
+  <h1>{$t('trk.title')}</h1>
 
   {#if !bestellung}
     <div class="leer">
-      <p>Du hast aktuell keine Bestellung zum Verfolgen.</p>
-      <a href="/restaurants" class="btn">Jetzt bestellen</a>
+      <p>{$t('trk.none')}</p>
+      <a href="/restaurants" class="btn">{$t('trk.order_now')}</a>
     </div>
   {:else}
     <div class="karte">
       <div class="kopf">
         {#if bestellung.nummer}<span class="nummer">{bestellung.nummer}</span>{/if}
-        <span class="termin">🕒 Lieferung bis {bestellung.liefertermin} Uhr</span>
+        <span class="termin">{$t('trk.delivery_by').replace('{zeit}', bestellung.liefertermin)}</span>
       </div>
 
       <!-- Großer Status-Indikator -->
       <div class="status-gross">
         {#if phase === 0}📝{:else if phase === 1}👨‍🍳{:else if phase === 2}🛵{:else}✅{/if}
-        <span>{PHASEN[phase]}</span>
+        <span>{$t('trk.p' + phase)}</span>
       </div>
 
       <!-- Fortschritts-Tracker -->
       <div class="tracker">
-        {#each PHASEN as p, i}
+        {#each [0, 1, 2, 3] as i}
           <div class="schritt" class:erreicht={i <= phase} class:aktuell={i === phase}>
             <div class="punkt">{i < phase ? '✅' : i === phase ? '🔄' : '⬜'}</div>
-            <span>{p}</span>
+            <span>{$t('trk.p' + i)}</span>
           </div>
         {/each}
       </div>
 
       <!-- Fortschrittsbalken -->
       <div class="balken-bg">
-        <div class="balken" style="width: {((phase + 1) / PHASEN.length) * 100}%"></div>
+        <div class="balken" style="width: {((phase + 1) / 4) * 100}%"></div>
       </div>
 
-      <p class="hinweis">Diese Seite aktualisiert sich automatisch. 🔄</p>
-      <a href="/bestellungen" class="btn sekundaer">Zu meinen Bestellungen</a>
+      <p class="hinweis">{$t('trk.auto')}</p>
+      <a href="/bestellungen" class="btn sekundaer">{$t('trk.to_orders')}</a>
     </div>
   {/if}
 </div>

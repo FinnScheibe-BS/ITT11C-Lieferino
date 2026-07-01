@@ -55,7 +55,7 @@
     anforderungen = [];
     if (!staerke.istSicher) return;
     if (neuesPasswort !== passwortBestaetigung) {
-      fehler = 'Die beiden Passwörter stimmen nicht überein.';
+      fehler = $t('reset.mismatch');
       return;
     }
     laedt = true;
@@ -72,29 +72,29 @@
 
 <div class="wrap">
   <div class="box">
-    <div class="hero"><h2>🔑 Passwort zurücksetzen</h2></div>
+    <div class="hero"><h2>{$t('reset.title')}</h2></div>
 
     {#if schritt === 'email'}
       <form onsubmit={emailAbsenden}>
-        <p>Gib deine E-Mail ein – wir schicken dir einen Einmal-Code.</p>
+        <p>{$t('reset.email_sub')}</p>
         <input type="email" placeholder="name@beispiel.de" bind:value={email} required />
-        <button type="submit" disabled={laedt}>{laedt ? 'Sende…' : 'Code anfordern'}</button>
+        <button type="submit" disabled={laedt}>{laedt ? $t('auth.sending') : $t('reset.request_btn')}</button>
       </form>
-      <p class="zurueck"><a href="/login">← Zurück zum Login</a></p>
+      <p class="zurueck"><a href="/login">{$t('auth.back_login')}</a></p>
 
     {:else if schritt === 'code'}
       <form onsubmit={codeAbsenden}>
-        <p>Falls es ein Konto zu <strong>{email}</strong> gibt, haben wir einen 6-stelligen Code geschickt.</p>
+        <p>{$t('reset.code_sub').replace('{email}', email)}</p>
         <input type="text" inputmode="numeric" maxlength="6" placeholder="123456" bind:value={codeEingabe} required />
         {#if fehler}<p class="fehler">{fehler}</p>{/if}
-        <button type="submit" disabled={laedt}>{laedt ? 'Prüfe…' : 'Code bestätigen'}</button>
+        <button type="submit" disabled={laedt}>{laedt ? $t('auth.checking') : $t('reset.code_btn')}</button>
       </form>
-      <button type="button" class="link" onclick={codeErneut}>Code erneut senden 🔁</button>
+      <button type="button" class="link" onclick={codeErneut}>{$t('auth.resend')}</button>
 
     {:else if schritt === 'neu'}
       <form onsubmit={passwortSpeichern}>
-        <p>Wähle ein neues, sicheres Passwort.</p>
-        <input type="password" placeholder="Neues Passwort" bind:value={neuesPasswort} required />
+        <p>{$t('reset.new_sub')}</p>
+        <input type="password" placeholder={$t('reset.new_ph')} bind:value={neuesPasswort} required />
         {#if neuesPasswort.length > 0}
           <ul class="pw-rules">
             <li class:ok={staerke.regeln.laenge}>{$t('pw.rule_length')}</li>
@@ -104,23 +104,23 @@
             <li class:ok={staerke.regeln.sonderzeichen}>{$t('pw.rule_special')}</li>
           </ul>
         {/if}
-        <input type="password" placeholder="Neues Passwort bestätigen" bind:value={passwortBestaetigung} required />
+        <input type="password" placeholder={$t('reset.confirm_ph')} bind:value={passwortBestaetigung} required />
         {#if passwortBestaetigung.length > 0 && neuesPasswort !== passwortBestaetigung}
-          <p class="fehler">Die Passwörter stimmen noch nicht überein.</p>
+          <p class="fehler">{$t('reset.mismatch')}</p>
         {/if}
         {#if fehler}<p class="fehler">{fehler}</p>{/if}
         {#if anforderungen.length > 0}
           <ul class="fehler-liste">{#each anforderungen as a}<li>{a}</li>{/each}</ul>
         {/if}
         <button type="submit" disabled={laedt || !staerke.istSicher || neuesPasswort !== passwortBestaetigung}>
-          {laedt ? 'Speichere…' : 'Passwort speichern'}
+          {laedt ? $t('reset.saving') : $t('reset.save_btn')}
         </button>
       </form>
 
     {:else}
       <div class="fertig">
-        <p>✅ Dein Passwort wurde geändert!</p>
-        <a href="/login" class="btn-link">Jetzt einloggen 🔑</a>
+        <p>{$t('reset.done')}</p>
+        <a href="/login" class="btn-link">{$t('reset.login_now')}</a>
       </div>
     {/if}
   </div>

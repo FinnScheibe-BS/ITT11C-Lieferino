@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { login } from '$lib/stores/auth.js';
   import { api } from '$lib/api.js';
+  import { t } from '$lib/i18n.js';
   import AuthVollenden from '$lib/AuthVollenden.svelte';
 
   // 'login' = E-Mail+Passwort. 'weiter' = Code/MFA über die AuthVollenden-Komponente.
@@ -29,7 +30,7 @@
     laedt = false;
 
     if (res.offline) {
-      fehler = 'Server nicht erreichbar. Bitte später erneut versuchen. 📡';
+      fehler = $t('auth.offline');
       return;
     }
     const d = res.daten || {};
@@ -56,7 +57,7 @@
       return;
     }
     // Sonst: Fehler (falsches Passwort, gesperrt, zu viele Versuche …) klar anzeigen.
-    fehler = d.fehler || 'Anmeldung fehlgeschlagen.';
+    fehler = d.fehler || $t('auth.login_failed');
   }
 
   // Wird aufgerufen, sobald die Anmeldung komplett ist (volles Token liegt vor).
@@ -70,17 +71,17 @@
 <div class="login-wrapper">
   <div class="login-box">
     <div class="hero-box">
-      <h2>🔑 Anmelden</h2>
+      <h2>{$t('auth.signin')}</h2>
     </div>
 
     {#if schritt === 'login'}
       <form onsubmit={loginAbsenden}>
         <div class="input-group">
-          <label for="email">E-Mail Adresse</label>
+          <label for="email">{$t('auth.email')}</label>
           <input type="email" id="email" placeholder="name@beispiel.de" bind:value={email} required />
         </div>
         <div class="input-group">
-          <label for="pw">Passwort</label>
+          <label for="pw">{$t('auth.password')}</label>
           <div class="pw-feld">
             {#if zeigePasswort}
               <input type="text" id="pw" placeholder="••••••••" bind:value={passwort} required />
@@ -94,16 +95,16 @@
         </div>
 
         <label class="bleiben">
-          <input type="checkbox" bind:checked={angemeldetBleiben} /> Angemeldet bleiben
+          <input type="checkbox" bind:checked={angemeldetBleiben} /> {$t('auth.stay')}
         </label>
 
         {#if fehler}<p class="error-msg">{fehler}</p>{/if}
 
-        <button type="submit" class="login-btn" disabled={laedt}>{laedt ? 'Prüfe…' : 'Einloggen ➡️'}</button>
+        <button type="submit" class="login-btn" disabled={laedt}>{laedt ? $t('auth.checking') : $t('auth.login_btn')}</button>
       </form>
 
-      <p class="hinweis">Noch kein Konto? <a href="/">Jetzt registrieren</a></p>
-      <p class="hinweis"><a href="/passwort-vergessen">Passwort vergessen? 🔑</a></p>
+      <p class="hinweis">{$t('auth.no_account')} <a href="/">{$t('auth.register_now')}</a></p>
+      <p class="hinweis"><a href="/passwort-vergessen">{$t('auth.forgot')}</a></p>
 
     {:else if schritt === 'weiter'}
       <AuthVollenden
@@ -113,7 +114,7 @@
         mfaToken={authMfaToken}
         onFertig={authFertig}
       />
-      <button type="button" class="zurueck" onclick={() => { schritt = 'login'; fehler = ''; }}>← Zurück zum Login</button>
+      <button type="button" class="zurueck" onclick={() => { schritt = 'login'; fehler = ''; }}>{$t('auth.back_login')}</button>
     {/if}
   </div>
 </div>

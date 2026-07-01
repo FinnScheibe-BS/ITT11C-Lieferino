@@ -5,6 +5,7 @@
   //   'mfaVerify' -> beim Login den MFA-Code eingeben
   // Bei Erfolg ruft die Komponente onFertig({ token, user }) auf.
   import { api, setzeToken } from '$lib/api.js';
+  import { t } from '$lib/i18n.js';
 
   let { start = 'verify', email = '', setupToken = '', mfaToken = '', onFertig } = $props();
 
@@ -76,7 +77,7 @@
   async function codeErneutSenden() {
     fehler = ''; infoText = '';
     await api('/api/auth/resend-code', { method: 'POST', body: { email } });
-    infoText = 'Neuer Code wurde an deine E-Mail geschickt. 📧';
+    infoText = $t('auth.resent');
   }
 
   function fertig(daten) {
@@ -87,38 +88,38 @@
 
 <div class="auth-vollenden">
   {#if phase === 'verify'}
-    <h3>📧 E-Mail bestätigen</h3>
-    <p class="hint">Wir haben einen 6-stelligen Code an <strong>{email}</strong> geschickt.</p>
+    <h3>{$t('auth.verify_title')}</h3>
+    <p class="hint">{$t('auth.verify_sub').replace('{email}', email)}</p>
     <form onsubmit={verifyAbsenden}>
       <input type="text" inputmode="numeric" maxlength="6" placeholder="123456" bind:value={code} required />
       {#if fehler}<p class="err">{fehler}</p>{/if}
       {#if infoText}<p class="info">{infoText}</p>{/if}
-      <button type="submit" class="btn" disabled={laedt}>{laedt ? 'Prüfe…' : 'Code bestätigen ✅'}</button>
+      <button type="submit" class="btn" disabled={laedt}>{laedt ? $t('auth.checking') : $t('auth.verify_btn')}</button>
     </form>
-    <button type="button" class="link" onclick={codeErneutSenden}>Code erneut senden 🔁</button>
+    <button type="button" class="link" onclick={codeErneutSenden}>{$t('auth.resend')}</button>
 
   {:else if phase === 'mfaSetup'}
-    <h3>🔐 Zwei-Faktor einrichten (Pflicht)</h3>
-    <p class="hint">Scanne den QR-Code mit einer Authenticator-App (z.B. Google Authenticator, Authy) und gib dann den angezeigten 6-stelligen Code ein.</p>
+    <h3>{$t('auth.mfa_setup_title')}</h3>
+    <p class="hint">{$t('auth.mfa_setup_sub')}</p>
     {#if qr}
-      <div class="qr-box"><img src={qr} alt="QR-Code für die Authenticator-App" /></div>
-      <p class="secret">Kein Scan möglich? Geheimnis manuell eintippen:<br /><code>{secret}</code></p>
+      <div class="qr-box"><img src={qr} alt="QR-Code" /></div>
+      <p class="secret">{$t('auth.mfa_secret_hint')}<br /><code>{secret}</code></p>
     {:else if laedt}
-      <p class="hint">QR-Code wird geladen…</p>
+      <p class="hint">{$t('auth.qr_loading')}</p>
     {/if}
     <form onsubmit={enableAbsenden}>
       <input type="text" inputmode="numeric" maxlength="6" placeholder="123456" bind:value={code} required />
       {#if fehler}<p class="err">{fehler}</p>{/if}
-      <button type="submit" class="btn" disabled={laedt || !qr}>{laedt ? 'Prüfe…' : 'MFA aktivieren & anmelden 🔓'}</button>
+      <button type="submit" class="btn" disabled={laedt || !qr}>{laedt ? $t('auth.checking') : $t('auth.mfa_enable_btn')}</button>
     </form>
 
   {:else if phase === 'mfaVerify'}
-    <h3>🔐 Zwei-Faktor-Bestätigung</h3>
-    <p class="hint">Gib den aktuellen 6-stelligen Code aus deiner Authenticator-App ein.</p>
+    <h3>{$t('auth.mfa_verify_title')}</h3>
+    <p class="hint">{$t('auth.mfa_verify_sub')}</p>
     <form onsubmit={verifyLoginAbsenden}>
       <input type="text" inputmode="numeric" maxlength="6" placeholder="123456" bind:value={code} required />
       {#if fehler}<p class="err">{fehler}</p>{/if}
-      <button type="submit" class="btn" disabled={laedt}>{laedt ? 'Prüfe…' : 'Bestätigen ✅'}</button>
+      <button type="submit" class="btn" disabled={laedt}>{laedt ? $t('auth.checking') : $t('auth.confirm')}</button>
     </form>
   {/if}
 </div>
