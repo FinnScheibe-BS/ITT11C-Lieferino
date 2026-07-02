@@ -9,6 +9,13 @@
   import { toggleEmojiCursor, toggleSaison } from '$lib/stores/funmodus.js';
   import { geheimFreischalten } from '$lib/stores/lieferanten.js';
 
+  let gewaehlterTyp = $state('alle');
+  let sortierung = $state('standard');
+  let suche = $state('');
+  let nurFavoriten = $state(false);
+  let nurVeg = $state(false);
+  let nurGeoeffnet = $state(false);
+
   $effect(() => {
     const s = suche.toLowerCase().replace(/\s/g, '');
     if (s === 'drachenlord') drachenlordAusloesen();
@@ -27,13 +34,6 @@
     }
   });
 
-  let gewaehlterTyp = $state('alle');
-  let sortierung = $state('standard');
-  let suche = $state('');
-  let nurFavoriten = $state(false);
-  let nurVeg = $state(false);
-  let nurGeoeffnet = $state(false);
-
   function anzeigeBewertung(r) {
     const reviews = $bewertungen[r.slug] || [];
     if (reviews.length === 0) return r.bewertung;
@@ -42,6 +42,7 @@
 
   let gefilterteRestaurants = $derived(
     $aktiveRestaurants
+      .slice()
       .filter((r) => gewaehlterTyp === 'alle' || r.typ === gewaehlterTyp)
       .filter((r) => r.name.toLowerCase().includes(suche.toLowerCase()))
       .filter((r) => !nurFavoriten || $favoriten.includes(r.slug))
@@ -102,7 +103,7 @@
 
   <div class="grid">
     {#each gefilterteRestaurants as r}
-      <a href="/restaurant/{r.slug}" class="restaurant-card">
+      <a href="/restaurant/{r.slug}" class="restaurant-card karte">
         <span class="emoji-bild">{r.emoji}</span>
 
         <!-- Herz & Badge oben -->
@@ -113,8 +114,8 @@
 
         <!-- Text unten -->
         <div class="card-info">
-          <h3>{r.name}</h3>
           <p>{r.beschreibung}</p>
+          <h3>{r.name}</h3>
           <div class="card-meta">
             <span class="tag">{r.typ}</span>
             <span class="lieferzeit">⏱️ {r.lieferzeit}</span>
