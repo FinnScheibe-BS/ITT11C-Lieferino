@@ -520,39 +520,12 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-<<<<<<< HEAD
   .punkte-zahl {
     margin: 0;
     font-size: 1.75rem;
     font-weight: 850;
     letter-spacing: -0.03em;
   }
-=======
-  .info-block { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-  .split-row { display: flex; gap: 15px; width: 100%; }
-  .grow { flex: 1; }
-  .narrow { width: 30%; }
-  
-  .label { font-size: 0.75rem; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-  .value { font-size: 1.05rem; color: #222; font-weight: 700; padding: 4px 0; display: inline-block; }
-  .email-value { color: #673ab7; }
-  .placeholder-text { color: #ccc; font-weight: 400; font-style: italic; font-size: 0.95rem; }
-  .pw-link { color: #673ab7; }
-
-  .inline-input { width: 100%; padding: 10px; border: 2px solid #e1bee7; border-radius: 8px; font-size: 0.95rem; font-family: sans-serif; font-weight: 600; box-sizing: border-box; outline: none; background: #fff; }
-  .inline-input:focus { border-color: #673ab7; }
-  
-  .logout-btn { margin-top: 5px; padding: 14px; background: #fff; color: #dc3545; border: 2px solid #dc3545; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-  .logout-btn:hover { background: #dc3545; color: white; }
-  /* 🔐 MFA / 2FA */
-  .mfa-status { font-weight: 700; margin: 0; }
-  .mfa-status.an { color: #34c759; }
-  .mfa-status.aus { color: #d97706; }
-  .mfa-info { font-size: 0.9rem; color: #555; margin: 6px 0; }
-  .mfa-btn { flex: 1; min-width: 140px; padding: 12px; background: #673ab7; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-  .mfa-btn:hover { background: #542f95; }
-  .mfa-btn.grau { background: #f1f1f1; color: #333; }
->>>>>>> a9ef3c9b025c8f030a8d077c2da01ea558e1105c
 
   .punkte-hint,
   .mfa-info,
