@@ -1,74 +1,97 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { api, getToken } from '$lib/api.js';
+  import { t } from '$lib/i18n.js';
 
   // 🚚 LIVE-TRACKING der zuletzt aufgegebenen Bestellung.
-  // Der Status wird aus der vergangenen Zeit seit der Bestellung berechnet.
+  // Eingeloggt: der Status kommt SERVERSEITIG (manipulationssicher) vom Backend.
+  // Sonst: lokale Berechnung aus der vergangenen Zeit (Fallback / offline).
 
-  const PHASEN = ['Bestellung erhalten', 'Wird zubereitet', 'Unterwegs', 'Geliefert'];
-
+  let PHASEN = $state(['Bestellung erhalten', 'Wird zubereitet', 'Unterwegs', 'Geliefert']);
   let bestellung = $state(null);
   let phase = $state(0);
   let timer;
 
-  function berechnePhase() {
+  // 🗄️ Status vom Backend holen.
+  async function ladeStatusVomBackend() {
+    if (!bestellung?.nummer || !getToken()) return;
+    const res = await api('/api/orders/' + bestellung.nummer + '/status');
+    if (res.ok && res.daten) {
+      phase = res.daten.phase;
+      if (Array.isArray(res.daten.phasen)) PHASEN = res.daten.phasen;
+    }
+  }
+
+  // Lokale Berechnung (Fallback, wenn nicht eingeloggt / Backend aus).
+  function berechnePhaseLokal() {
     if (!bestellung) return;
     const start = new Date(bestellung.datum).getTime();
-    const jetzt = Date.now();
-    // Gesamte Lieferdauer: 40 Minuten (in 4 gleiche Phasen geteilt).
-    const gesamtMs = 40 * 60 * 1000;
-    const anteil = Math.min(1, Math.max(0, (jetzt - start) / gesamtMs));
+    const gesamtMs = 30 * 60 * 1000; // 30 Min, 4 Phasen
+    const anteil = Math.min(1, Math.max(0, (Date.now() - start) / gesamtMs));
     phase = Math.min(PHASEN.length - 1, Math.floor(anteil * PHASEN.length));
   }
 
   onMount(() => {
-    const verlauf = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
-    bestellung = verlauf[0] || null; // die neueste
-    berechnePhase();
-    // Alle 5 Sekunden aktualisieren.
-    timer = setInterval(berechnePhase, 5000);
+    (async () => {
+      // Eingeloggt: neueste Bestellung + echten Status vom Backend.
+      if (getToken()) {
+        const res = await api('/api/orders');
+        if (res.ok && Array.isArray(res.daten) && res.daten.length) {
+          bestellung = res.daten[0];
+          await ladeStatusVomBackend();
+          timer = setInterval(ladeStatusVomBackend, 5000);
+          return;
+        }
+      }
+      // Fallback: lokale Kopie.
+      const verlauf = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
+      bestellung = verlauf[0] || null;
+      berechnePhaseLokal();
+      timer = setInterval(berechnePhaseLokal, 5000);
+    })();
   });
 
   onDestroy(() => clearInterval(timer));
 </script>
 
 <div class="seite">
-  <h1>🚚 Live-Tracking</h1>
+  <h1>{$t('trk.title')}</h1>
 
   {#if !bestellung}
     <div class="leer">
-      <p>Du hast aktuell keine Bestellung zum Verfolgen.</p>
-      <a href="/restaurants" class="btn">Jetzt bestellen</a>
+      <p>{$t('trk.none')}</p>
+      <a href="/restaurants" class="btn">{$t('trk.order_now')}</a>
     </div>
   {:else}
     <div class="karte">
       <div class="kopf">
         {#if bestellung.nummer}<span class="nummer">{bestellung.nummer}</span>{/if}
-        <span class="termin">🕒 Lieferung bis {bestellung.liefertermin} Uhr</span>
+        <span class="termin">{$t('trk.delivery_by').replace('{zeit}', bestellung.liefertermin)}</span>
       </div>
 
       <!-- Großer Status-Indikator -->
       <div class="status-gross">
         {#if phase === 0}📝{:else if phase === 1}👨‍🍳{:else if phase === 2}🛵{:else}✅{/if}
-        <span>{PHASEN[phase]}</span>
+        <span>{$t('trk.p' + phase)}</span>
       </div>
 
       <!-- Fortschritts-Tracker -->
       <div class="tracker">
-        {#each PHASEN as p, i}
+        {#each [0, 1, 2, 3] as i}
           <div class="schritt" class:erreicht={i <= phase} class:aktuell={i === phase}>
             <div class="punkt">{i < phase ? '✅' : i === phase ? '🔄' : '⬜'}</div>
-            <span>{p}</span>
+            <span>{$t('trk.p' + i)}</span>
           </div>
         {/each}
       </div>
 
       <!-- Fortschrittsbalken -->
       <div class="balken-bg">
-        <div class="balken" style="width: {((phase + 1) / PHASEN.length) * 100}%"></div>
+        <div class="balken" style="width: {((phase + 1) / 4) * 100}%"></div>
       </div>
 
-      <p class="hinweis">Diese Seite aktualisiert sich automatisch. 🔄</p>
-      <a href="/bestellungen" class="btn sekundaer">Zu meinen Bestellungen</a>
+      <p class="hinweis">{$t('trk.auto')}</p>
+      <a href="/bestellungen" class="btn sekundaer">{$t('trk.to_orders')}</a>
     </div>
   {/if}
 </div>

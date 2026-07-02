@@ -3,8 +3,9 @@
   import { page } from '$app/stores';
   import { zumWarenkorb } from '$lib/stores/cart.js';
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
-  import { bewertungen, bewertungHinzufuegen } from '$lib/stores/bewertungen.js';
+  import { bewertungen, bewertungHinzufuegen, ladeBewertungen } from '$lib/stores/bewertungen.js';
   import { deaktivierteLieferanten, findeRestaurant } from '$lib/stores/lieferanten.js';
+  import { api, getToken } from '$lib/api.js';
 
   // Den Slug aus der URL holen und das Restaurant suchen (inkl. Geheim-Restaurant).
   // Deaktivierte Lieferanten behandeln wir für normale Nutzer wie "nicht gefunden".
@@ -13,8 +14,25 @@
 
   // Frühere Bestellungen laden, um zu prüfen, ob man hier schon bestellt hat.
   let meineBestellungen = $state([]);
-  onMount(() => {
+  // Bestellungen laden (lokal sofort, eingeloggt zusätzlich aus der DB).
+  // Bewusst als $effect (läuft zuverlässig) statt async onMount.
+  let bestellungenGeladen = false;
+  $effect(() => {
+    if (bestellungenGeladen) return;
+    bestellungenGeladen = true;
     meineBestellungen = JSON.parse(localStorage.getItem('lieferino_bestellungen') || '[]');
+    if (getToken()) {
+      api('/api/orders').then((res) => {
+        if (res.ok && Array.isArray(res.daten)) {
+          meineBestellungen = res.daten.map((o) => ({ ...o, artikel: o.positionen || [] }));
+        }
+      });
+    }
+  });
+
+  // 🗄️ Reviews dieses Restaurants aus dem Backend laden (bei jedem Slug-Wechsel).
+  $effect(() => {
+    if (slug) ladeBewertungen(slug);
   });
 
   // Darf nur bewerten, wer hier nachweislich schon bestellt hat.
@@ -61,13 +79,28 @@
   let neuSterne = $state(5);
   let neuText = $state('');
 
-  function bewertungAbschicken(e) {
+  let bewertungFehler = $state('');
+  async function bewertungAbschicken(e) {
     e.preventDefault();
+<<<<<<< HEAD
     if (!hatHierBestellt) return;
     if (neuName.trim() === '' || neuText.trim() === '') return;
 
     bewertungHinzufuegen(slug, { name: neuName, sterne: neuSterne, text: neuText });
 
+=======
+    if (neuName.trim() === '' || neuText.trim() === '') return;
+    bewertungFehler = '';
+
+    const r = await bewertungHinzufuegen(slug, {
+      name: neuName, sterne: neuSterne, text: neuText, restaurantName: restaurant.name
+    });
+    if (!r.ok) {
+      bewertungFehler = r.daten?.fehler || 'Bewertung konnte nicht gespeichert werden.';
+      return;
+    }
+    // Felder zurücksetzen
+>>>>>>> a9ef3c9b025c8f030a8d077c2da01ea558e1105c
     neuName = '';
     neuText = '';
     neuSterne = 5;
@@ -168,6 +201,7 @@
           <option value={1}>⭐ (1)</option>
         </select>
         <textarea placeholder="Wie war dein Essen?" bind:value={neuText} required></textarea>
+        {#if bewertungFehler}<p class="review-fehler">{bewertungFehler}</p>{/if}
         <button type="submit">Bewertung abschicken</button>
       </form>
     {:else}
@@ -286,6 +320,7 @@
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
   }
 
+<<<<<<< HEAD
   .bewertung-link {
     color: #f9c932;
     text-decoration: underline;
@@ -567,3 +602,14 @@
     }
   }
 </style>
+=======
+  .bewertung-link { color: inherit; text-decoration: underline; text-decoration-style: dotted; cursor: pointer; }
+  .review-sperre { background: #f7f7f7; border: 1px solid #eee; border-radius: 12px; padding: 14px; color: #777; }
+  .review-fehler { color: #dc3545; font-weight: 600; font-size: 0.85rem; margin: 0; }
+  .keine-reviews { color: #777; }
+  .reviews { display: flex; flex-direction: column; gap: 10px; }
+  .review { background: white; border: 1px solid #eee; border-radius: 12px; padding: 14px; }
+  .review-kopf { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .review p { margin: 0; color: #555; }
+</style>
+>>>>>>> a9ef3c9b025c8f030a8d077c2da01ea558e1105c

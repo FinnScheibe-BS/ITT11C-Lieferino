@@ -1,0 +1,8 @@
+# 📦 Eigener Namespace, damit alles zu Lieferino zusammen liegt
+# und nicht mit anderen Projekten im Cluster kollidiert.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lieferino
+  labels:
+    app.kubernetes.io/part-of: lieferino

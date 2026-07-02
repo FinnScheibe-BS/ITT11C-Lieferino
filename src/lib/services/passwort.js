@@ -4,12 +4,18 @@
 // und gibt eine Bewertung zurück, die wir dem Nutzer anzeigen können.
 // =====================================================================
 
+// 🔐 Diese Regeln MÜSSEN mit dem Backend übereinstimmen
+// (backend/handlers/passwort.go), sonst sieht der Nutzer "grün", wird aber
+// trotzdem abgelehnt. Daher: mind. 10 Zeichen UND alle 5 Regeln.
+export const MIN_LAENGE = 10;
+
 // Prüft ein Passwort gegen mehrere Regeln und gibt ein Ergebnis-Objekt zurück.
 // score = wie viele Regeln erfüllt sind (0 bis 5).
+// stufeKey = i18n-Schlüssel für die Stärke (Komponente übersetzt via $t).
 export function pruefePasswortStaerke(passwort) {
   // Jede Regel ist true/false. So sieht der Nutzer genau, was noch fehlt.
   const regeln = {
-    laenge: passwort.length >= 8, // mindestens 8 Zeichen
+    laenge: passwort.length >= MIN_LAENGE, // mindestens 10 Zeichen
     grossbuchstabe: /[A-Z]/.test(passwort), // mind. ein Großbuchstabe
     kleinbuchstabe: /[a-z]/.test(passwort), // mind. ein Kleinbuchstabe
     zahl: /[0-9]/.test(passwort), // mind. eine Zahl
@@ -19,24 +25,24 @@ export function pruefePasswortStaerke(passwort) {
   // Wir zählen, wie viele Regeln erfüllt sind.
   const score = Object.values(regeln).filter(Boolean).length;
 
-  // Ein passender Text + Farbe zur Stärke.
-  let text = 'Sehr schwach';
+  // Ein passender i18n-Schlüssel + Farbe zur Stärke.
+  let stufeKey = 'pw.very_weak';
   let farbe = '#ff3b30'; // rot
   if (score === 3) {
-    text = 'Mittel';
+    stufeKey = 'pw.medium';
     farbe = '#ff9500'; // orange
   } else if (score === 4) {
-    text = 'Stark';
+    stufeKey = 'pw.strong';
     farbe = '#34c759'; // grün
   } else if (score === 5) {
-    text = 'Sehr stark';
+    stufeKey = 'pw.very_strong';
     farbe = '#248a3d'; // dunkelgrün
   }
 
-  // Ab 4 erfüllten Regeln werten wir das Passwort als "sicher genug".
-  const istSicher = score >= 4;
+  // "Sicher genug" = ALLE Regeln erfüllt (gleiche Schwelle wie das Backend).
+  const istSicher = score === 5;
 
-  return { regeln, score, text, farbe, istSicher };
+  return { regeln, score, stufeKey, farbe, istSicher };
 }
 
 // ---------------------------------------------------------------------

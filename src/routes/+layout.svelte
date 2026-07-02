@@ -5,8 +5,9 @@
   import { warenkorb } from '$lib/stores/cart.js';
   import { theme, themeWechseln } from '$lib/stores/theme.js';
   import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
+  import { eingeloggt, logout } from '$lib/stores/auth.js';
+  import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
   import Drachenlord from '$lib/Drachenlord.svelte';
   import FunOverlay from '$lib/FunOverlay.svelte';
 
@@ -54,15 +55,15 @@
 
   function menuSchliessen() { menuOffen = false; }
 
-  onMount(() => {
-    // Libre Caslon von Google Fonts laden
-    if (browser) {
-      const link = document.createElement('link');
-      link.href = 'https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap';
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
-    }
+  // 🔓 Logout: beendet die Session (Konto bleibt) und geht zur Startseite.
+  function ausloggen() {
+    logout();
+    menuSchliessen();
+    goto('/');
+  }
 
+  onMount(() => {
+    // (Libre Caslon wird jetzt direkt in app.html geladen -> kein Umspringen.)
     const unsub = warenkorb.subscribe(v => anzahl = v?.length ?? 0);
     tickInterval = setInterval(tick, TICK_DAUER_MS);
     window.addEventListener('keydown', konamiTaste);
@@ -141,10 +142,17 @@
         <span class="nav-icon">👤</span>
         {$t('nav.account')}
       </a>
-      <a href="/login" onclick={menuSchliessen} class="nav-link">
-        <span class="nav-icon">🔑</span>
-        {$t('nav.login')}
-      </a>
+      {#if !$eingeloggt}
+        <a href="/login" onclick={menuSchliessen} class="nav-link">
+          <span class="nav-icon">🔑</span>
+          {$t('nav.login')}
+        </a>
+      {:else}
+        <button type="button" onclick={ausloggen} class="nav-link nav-logout">
+          <span class="nav-icon">🚪</span>
+          {$t('nav.logout')}
+        </button>
+      {/if}
       <a href="/admin" onclick={menuSchliessen} class="nav-link">
         <span class="nav-icon">⚙</span>
         {$t('nav.admin')}
@@ -423,11 +431,16 @@
     box-shadow: 0 0 0 3px rgba(230,168,0,0.15) !important;
   }
 
-  :global(html[data-theme='light'] input),
+  :global(html[data-theme='light'] input:not([type='checkbox']):not([type='radio'])),
   :global(html[data-theme='light'] select),
   :global(html[data-theme='light'] textarea) {
-    background: rgba(255, 248, 220, 0.60) !important;
+    background: rgba(255, 250, 235, 0.85) !important;
     color: #1a1200 !important;
+  }
+  /* Platzhalter im Light-Mode gut lesbar (aber klar als Platzhalter erkennbar) */
+  :global(html[data-theme='light'] input::placeholder),
+  :global(html[data-theme='light'] textarea::placeholder) {
+    color: rgba(26, 18, 0, 0.45) !important;
   }
 
   /* ─── Überschriften ─── NEU: Geist für Headlines ────────────────────── */
@@ -442,6 +455,7 @@
   :global(html[data-theme='light'] h1) { color: #1a0f00; }
   :global(html[data-theme='light'] h2) { color: #7a5000; }
   :global(html[data-theme='light'] h3) { color: #7a5000; }
+  :global(html[data-theme='light'] h4) { color: #7a5000; }
 
   /* ─── Fetter Text nutzt auch Geist ─────────────────────────────────── */
   :global(strong), :global(b), :global(.font-bold) {
@@ -452,6 +466,9 @@
   /* ─── Links ─────────────────────────────────────────────────────────── */
   :global(a) { color: #f9c932; text-decoration: none; transition: color 0.15s; }
   :global(a:hover) { color: #fff; }
+  /* Light-Mode: dunkleres Gold, damit Links lesbar sind (helles Gelb auf Weiß = kaum sichtbar) */
+  :global(html[data-theme='light'] a) { color: #9a6600; }
+  :global(html[data-theme='light'] a:hover) { color: #7a5000; }
 
   /* ─── Seiteninhalt ──────────────────────────────────────────────────── */
   .page-content {

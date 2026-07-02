@@ -1,19 +1,11 @@
 <script>
-  import { onMount } from 'svelte';
-  // 🔐 MFA-Funktionen
-  import { generiereSecret, otpauthUri, pruefeTotp, generiereBackupCodes } from '$lib/services/mfa.js';
   import { eingeloggt, logout } from '$lib/stores/auth.js';
   import { treuepunkte } from '$lib/stores/treue.js';
+  import { api, getToken } from '$lib/api.js';
+  import { t } from '$lib/i18n.js';
 
   let user = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
   let geladen = $state(false);
-
-  // 🔐 MFA-Einrichtungs-Zustand (nur für die Oberfläche)
-  let totpSecret = $state('');     // das gerade erzeugte Authenticator-Secret
-  let totpUri = $state('');        // die otpauth-Adresse für die App
-  let totpEingabe = $state('');    // der vom Nutzer eingegebene Test-Code
-  let totpFehler = $state('');     // Fehlermeldung bei falschem Code
-  let zeigeTotpEinrichtung = $state(false);
 
   // Edit-Modus gilt jetzt pro BEREICH (Kategorie) statt pro Feld
   let editBereich = $state({
@@ -25,7 +17,11 @@
   // Temporäre Inputs für die Bearbeitung
   let inputs = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
 
-  onMount(() => {
+  // Hinweis: onMount feuert in diesem Setup nicht zuverlässig -> $effect (läuft sicher).
+  let initGeladen = false;
+  $effect(() => {
+    if (initGeladen) return;
+    initGeladen = true;
     const gespeicherterUser = localStorage.getItem("lieferino_user");
     if (gespeicherterUser) {
       user = JSON.parse(gespeicherterUser);
@@ -46,7 +42,35 @@
 
       geladen = true;
     }
+
+    // 🗄️ Falls eingeloggt: aktuelle Daten aus dem Backend (DB) nachladen.
+    (async () => {
+      if (!getToken()) return;
+      const res = await api('/api/me');
+      if (res.ok && res.daten) {
+        // Backend ist die Quelle der Wahrheit für Profil + Adressen.
+        user = { ...user, ...res.daten, passwort: user.passwort };
+        if (res.daten.adressen?.length) user.adressen = res.daten.adressen;
+        Object.keys(inputs).forEach((key) => { if (user[key] != null) inputs[key] = user[key]; });
+        inputs.passwort = "";
+        localStorage.setItem('lieferino_user', JSON.stringify(user));
+        geladen = true;
+      }
+    })();
   });
+
+  // 🗄️ Speichert Profil + Adressen ins Backend (DB), wenn eingeloggt.
+  async function backendSync() {
+    if (!getToken()) return;
+    await api('/api/me', {
+      method: 'PUT',
+      body: {
+        username: user.username, vorname: user.vorname,
+        nachname: user.nachname, geburtsdatum: user.geburtsdatum || '',
+        adressen: user.adressen || []
+      }
+    });
+  }
 
   // 📍 Eingabefelder für eine neue Adresse
   let neueAdresse = $state({ label: '', strasse: '', hausnummer: '', plz: '', ort: '' });
@@ -59,11 +83,13 @@
     user.adressen = [...user.adressen, { ...neueAdresse, label: neueAdresse.label || 'Adresse' }];
     localStorage.setItem('lieferino_user', JSON.stringify(user));
     neueAdresse = { label: '', strasse: '', hausnummer: '', plz: '', ort: '' };
+    backendSync();
   }
 
   function adresseLoeschen(index) {
     user.adressen = user.adressen.filter((_, i) => i !== index);
     localStorage.setItem('lieferino_user', JSON.stringify(user));
+    backendSync();
   }
 
   // Speichert alle Felder einer bestimmten Gruppe
@@ -81,6 +107,7 @@
     localStorage.setItem("lieferino_user", JSON.stringify(user));
     editBereich[bereich] = false; // Bearbeitungsmodus schließen
     if (felder.includes('passwort')) inputs.passwort = ""; // Passwort-Feld leeren
+    backendSync(); // 🗄️ Änderungen auch ins Backend (DB)
   }
 
   // 🔓 Ausloggen beendet nur die Session – das Konto bleibt erhalten!
@@ -100,69 +127,13 @@
     window.location.href = '/';
   }
 
-  // 🔐 Speichert den (geänderten) Nutzer zurück in den localStorage.
-  function speichereUser() {
-    localStorage.setItem('lieferino_user', JSON.stringify(user));
-  }
-
-  // Zeigt die frisch erzeugten Backup-Codes einmalig an.
-  let neueBackupCodes = $state([]);
-
-  // 📧 E-Mail-2FA direkt aktivieren (die E-Mail wurde bei der Registrierung
-  // bereits verifiziert, daher reicht hier ein Klick).
-  function aktiviereEmail2fa() {
-    const codes = generiereBackupCodes();
-    user.mfa = { aktiv: true, methode: 'email', backupCodes: codes };
-    neueBackupCodes = codes;
-    speichereUser();
-  }
-
-  // Erzeugt neue Backup-Codes (alte werden ungültig).
-  function backupCodesNeu() {
-    const codes = generiereBackupCodes();
-    user.mfa = { ...user.mfa, backupCodes: codes };
-    neueBackupCodes = codes;
-    speichereUser();
-  }
-
-  // 📲 Authenticator-Einrichtung starten: Secret erzeugen + otpauth-Adresse bauen.
-  function starteTotpEinrichtung() {
-    totpSecret = generiereSecret();
-    totpUri = otpauthUri(totpSecret, user.email || 'kunde');
-    totpEingabe = '';
-    totpFehler = '';
-    zeigeTotpEinrichtung = true;
-  }
-
-  // 📲 Authenticator bestätigen: Test-Code prüfen, dann 2FA aktivieren.
-  async function totpBestaetigen() {
-    const okay = await pruefeTotp(totpSecret, totpEingabe);
-    if (okay) {
-      const codes = generiereBackupCodes();
-      user.mfa = { aktiv: true, methode: 'totp', secret: totpSecret, backupCodes: codes };
-      neueBackupCodes = codes;
-      speichereUser();
-      zeigeTotpEinrichtung = false;
-      totpFehler = '';
-    } else {
-      totpFehler = 'Code stimmt nicht. Prüfe Uhrzeit/App und versuche es erneut.';
-    }
-  }
-
-  // 🔓 2FA wieder ausschalten.
-  function deaktiviereMfa() {
-    user.mfa = { aktiv: false };
-    neueBackupCodes = [];
-    speichereUser();
-    zeigeTotpEinrichtung = false;
-  }
 </script>
 
 <div class="account-container">
   
   <div class="hero-box">
-    <h2>👤 Mein Lieferino Profil</h2>
-    <p>Verwalte deine Daten und Lieferadressen</p>
+    <h2>{$t('acc.title')}</h2>
+    <p>{$t('acc.subtitle')}</p>
   </div>
 
   {#if $eingeloggt && geladen}
@@ -170,58 +141,58 @@
       
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">🔐 Logindaten</h3>
+          <h3 class="category-title">{$t('acc.login_data')}</h3>
           {#if !editBereich.login}
-            <button onclick={() => editBereich.login = true} class="edit-icon-btn" title="Gruppe bearbeiten">✏️ Bearbeiten</button>
+            <button onclick={() => editBereich.login = true} class="edit-icon-btn" title="Gruppe bearbeiten">{$t('acc.edit')}</button>
           {/if}
         </div>
         
         <div class="info-block">
-          <span class="label">Username</span>
+          <span class="label">{$t('acc.username')}</span>
           <div class="block-content">
             {#if !editBereich.login} <span class="value">@{user.username}</span> {:else} <input type="text" bind:value={inputs.username} class="inline-input" /> {/if}
           </div>
         </div>
 
         <div class="info-block">
-          <span class="label">E-Mail Adresse</span>
+          <span class="label">{$t('auth.email')}</span>
           <div class="block-content">
             {#if !editBereich.login} <span class="value email-value">{user.email}</span> {:else} <input type="email" bind:value={inputs.email} class="inline-input" /> {/if}
           </div>
         </div>
 
         <div class="info-block">
-          <span class="label">Passwort ändern</span>
+          <span class="label">{$t('auth.password')}</span>
           <div class="block-content">
-            {#if !editBereich.login} <span class="value password-dots">••••••••</span> {:else} <input type="password" bind:value={inputs.passwort} placeholder="Neues Passwort eingeben..." class="inline-input" /> {/if}
+            <a href="/passwort-vergessen" class="value pw-link">{$t('acc.change_pw')}</a>
           </div>
         </div>
 
         {#if editBereich.login}
-          <button onclick={() => bereichSpeichern('login', ['username', 'email', 'passwort'])} class="save-group-btn">💾 Logindaten speichern</button>
+          <button onclick={() => bereichSpeichern('login', ['username', 'email'])} class="save-group-btn">{$t('acc.save_login')}</button>
         {/if}
       </div>
 
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">👤 Persönliche Daten</h3>
+          <h3 class="category-title">{$t('acc.personal')}</h3>
           {#if !editBereich.persoenlich}
-            <button onclick={() => editBereich.persoenlich = true} class="edit-icon-btn" title="Gruppe bearbeiten">✏️ Bearbeiten</button>
+            <button onclick={() => editBereich.persoenlich = true} class="edit-icon-btn" title="Gruppe bearbeiten">{$t('acc.edit')}</button>
           {/if}
         </div>
 
         <div class="info-block">
-          <span class="label">Vorname</span>
+          <span class="label">{$t('acc.firstname')}</span>
           <div class="block-content">
             {#if !editBereich.persoenlich} <span class="value">{user.vorname}</span> {:else} <input type="text" bind:value={inputs.vorname} class="inline-input" /> {/if}
           </div>
         </div>
 
         <div class="info-block">
-          <span class="label">Zweiter Vorname</span>
+          <span class="label">{$t('acc.middlename')}</span>
           <div class="block-content">
-            {#if !editBereich.persoenlich} 
-              <span class="value {user.zweitname ? '' : 'placeholder-text'}">{user.zweitname ? user.zweitname : "Kein Zweitname"}</span> 
+            {#if !editBereich.persoenlich}
+              <span class="value {user.zweitname ? '' : 'placeholder-text'}">{user.zweitname ? user.zweitname : $t('acc.no_middle')}</span>
             {:else} 
               <input type="text" bind:value={inputs.zweitname} placeholder="Optional" class="inline-input" /> 
             {/if}
@@ -229,35 +200,35 @@
         </div>
 
         <div class="info-block">
-          <span class="label">Nachname</span>
+          <span class="label">{$t('acc.lastname')}</span>
           <div class="block-content">
             {#if !editBereich.persoenlich} <span class="value">{user.nachname}</span> {:else} <input type="text" bind:value={inputs.nachname} class="inline-input" /> {/if}
           </div>
         </div>
 
         {#if editBereich.persoenlich}
-          <button onclick={() => bereichSpeichern('persoenlich', ['vorname', 'zweitname', 'nachname'])} class="save-group-btn">💾 Namen speichern</button>
+          <button onclick={() => bereichSpeichern('persoenlich', ['vorname', 'zweitname', 'nachname'])} class="save-group-btn">{$t('acc.save_names')}</button>
         {/if}
       </div>
 
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">🏠 Lieferadresse</h3>
+          <h3 class="category-title">{$t('acc.address')}</h3>
           {#if !editBereich.adresse}
-            <button onclick={() => editBereich.adresse = true} class="edit-icon-btn" title="Gruppe bearbeiten">✏️ Bearbeiten</button>
+            <button onclick={() => editBereich.adresse = true} class="edit-icon-btn" title="Gruppe bearbeiten">{$t('acc.edit')}</button>
           {/if}
         </div>
 
         <div class="split-row">
           <div class="info-block grow">
-            <span class="label">Straße</span>
+            <span class="label">{$t('acc.street')}</span>
             <div class="block-content">
               {#if !editBereich.adresse} <span class="value">{user.strasse}</span> {:else} <input type="text" bind:value={inputs.strasse} class="inline-input" /> {/if}
             </div>
           </div>
 
           <div class="info-block narrow">
-            <span class="label">Nr.</span>
+            <span class="label">{$t('acc.number')}</span>
             <div class="block-content">
               {#if !editBereich.adresse} <span class="value">{user.hausnummer}</span> {:else} <input type="text" bind:value={inputs.hausnummer} class="inline-input" /> {/if}
             </div>
@@ -266,14 +237,14 @@
 
         <div class="split-row">
           <div class="info-block narrow">
-            <span class="label">PLZ</span>
+            <span class="label">{$t('acc.zip')}</span>
             <div class="block-content">
               {#if !editBereich.adresse} <span class="value">{user.plz}</span> {:else} <input type="text" bind:value={inputs.plz} class="inline-input" /> {/if}
             </div>
           </div>
 
           <div class="info-block grow">
-            <span class="label">Ort</span>
+            <span class="label">{$t('acc.city')}</span>
             <div class="block-content">
               {#if !editBereich.adresse} <span class="value">{user.ort}</span> {:else} <input type="text" bind:value={inputs.ort} class="inline-input" /> {/if}
             </div>
@@ -281,23 +252,23 @@
         </div>
 
         {#if editBereich.adresse}
-          <button onclick={() => bereichSpeichern('adresse', ['strasse', 'hausnummer', 'plz', 'ort'])} class="save-group-btn">💾 Adresse speichern</button>
+          <button onclick={() => bereichSpeichern('adresse', ['strasse', 'hausnummer', 'plz', 'ort'])} class="save-group-btn">{$t('acc.save_address')}</button>
         {/if}
       </div>
 
       <!-- ⭐ TREUEPUNKTE -->
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">⭐ Treuepunkte</h3>
+          <h3 class="category-title">{$t('acc.points_title')}</h3>
         </div>
-        <p class="punkte-zahl">{$treuepunkte} Punkte</p>
-        <p class="punkte-hint">Sammle 1 Punkt je 1€ Bestellwert. 100 Punkte = 5€ Rabatt im Checkout.</p>
+        <p class="punkte-zahl">{$t('acc.points_n').replace('{n}', $treuepunkte)}</p>
+        <p class="punkte-hint">{$t('acc.points_hint')}</p>
       </div>
 
       <!-- 📍 WEITERE ADRESSEN -->
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">📍 Meine Adressen</h3>
+          <h3 class="category-title">{$t('acc.my_addresses')}</h3>
         </div>
 
         {#each user.adressen || [] as adr, i}
@@ -311,96 +282,52 @@
 
         <!-- Neue Adresse hinzufügen -->
         <form class="adress-form" onsubmit={adresseHinzufuegen}>
-          <input type="text" placeholder="Bezeichnung (z.B. Arbeit)" bind:value={neueAdresse.label} />
+          <input type="text" placeholder={$t('acc.addr_label_ph')} bind:value={neueAdresse.label} />
           <div class="adr-row">
-            <input type="text" placeholder="Straße" bind:value={neueAdresse.strasse} required />
-            <input type="text" placeholder="Nr." bind:value={neueAdresse.hausnummer} required />
+            <input type="text" placeholder={$t('acc.street')} bind:value={neueAdresse.strasse} required />
+            <input type="text" placeholder={$t('acc.number')} bind:value={neueAdresse.hausnummer} required />
           </div>
           <div class="adr-row">
-            <input type="text" placeholder="PLZ" bind:value={neueAdresse.plz} required />
-            <input type="text" placeholder="Ort" bind:value={neueAdresse.ort} required />
+            <input type="text" placeholder={$t('acc.zip')} bind:value={neueAdresse.plz} required />
+            <input type="text" placeholder={$t('acc.city')} bind:value={neueAdresse.ort} required />
           </div>
-          <button type="submit" class="save-group-btn">➕ Adresse hinzufügen</button>
+          <button type="submit" class="save-group-btn">{$t('acc.add_address')}</button>
         </form>
       </div>
 
       <!-- 🔐 ZWEI-FAKTOR-AUTHENTIFIZIERUNG -->
       <div class="category-section">
         <div class="category-header">
-          <h3 class="category-title">🔐 Zwei-Faktor-Authentifizierung (2FA)</h3>
+          <h3 class="category-title">{$t('acc.mfa_title')}</h3>
         </div>
 
-        {#if user.mfa?.aktiv}
-          <!-- 2FA ist an -->
-          <p class="mfa-status an">
-            ✅ Aktiv – Methode: {user.mfa.methode === 'totp' ? 'Authenticator-App' : 'E-Mail-Code'}
-          </p>
-
-          <!-- 🆘 Frisch erzeugte Backup-Codes (nur einmalig anzeigen) -->
-          {#if neueBackupCodes.length > 0}
-            <div class="backup-box">
-              <p class="backup-titel">🆘 Deine Backup-Codes – jetzt notieren!</p>
-              <p class="mfa-mini">Jeder Code funktioniert einmal, falls du keinen Zugriff auf deinen zweiten Faktor hast.</p>
-              <div class="backup-codes">
-                {#each neueBackupCodes as code}<code>{code}</code>{/each}
-              </div>
-            </div>
-          {:else}
-            <p class="mfa-info">🆘 Noch {user.mfa.backupCodes?.length ?? 0} Backup-Codes übrig.</p>
-          {/if}
-
-          <div class="mfa-btn-row">
-            <button onclick={backupCodesNeu} class="mfa-btn grau">Neue Backup-Codes</button>
-            <button onclick={deaktiviereMfa} class="mfa-btn aus">2FA deaktivieren</button>
-          </div>
-        {:else if zeigeTotpEinrichtung}
-          <!-- Authenticator-Einrichtung -->
-          <p class="mfa-info">1. Füge dieses Konto in deiner Authenticator-App hinzu:</p>
-          <div class="totp-secret">
-            <span class="label">Secret (manuell eingeben)</span>
-            <code>{totpSecret}</code>
-          </div>
-          <p class="mfa-mini">Oder diese Adresse in der App öffnen:</p>
-          <code class="totp-uri">{totpUri}</code>
-
-          <p class="mfa-info">2. Gib den 6-stelligen Code aus der App ein:</p>
-          <input type="text" maxlength="6" placeholder="z.B. 123456" bind:value={totpEingabe} class="inline-input" />
-          {#if totpFehler}<p class="mfa-fehler">{totpFehler}</p>{/if}
-
-          <div class="mfa-btn-row">
-            <button onclick={() => (zeigeTotpEinrichtung = false)} class="mfa-btn grau">Abbrechen</button>
-            <button onclick={totpBestaetigen} class="mfa-btn">Aktivieren ✅</button>
-          </div>
+        {#if user.mfaAktiv}
+          <p class="mfa-status an">{$t('acc.mfa_active')}</p>
         {:else}
-          <!-- 2FA ist aus: Methode wählen -->
-          <p class="mfa-status aus">⚠️ Nicht aktiv – dein Konto ist nur mit dem Passwort geschützt.</p>
-          <p class="mfa-info">Schütze dein Konto mit einem zweiten Faktor:</p>
-          <div class="mfa-btn-row">
-            <button onclick={aktiviereEmail2fa} class="mfa-btn">📧 Per E-Mail-Code</button>
-            <button onclick={starteTotpEinrichtung} class="mfa-btn">📲 Per Authenticator-App</button>
-          </div>
+          <p class="mfa-status aus">{$t('acc.mfa_inactive')}</p>
         {/if}
+        <p class="mfa-info">{$t('acc.mfa_info')}</p>
       </div>
 
-      <button onclick={ausloggen} class="logout-btn">🔴 Ausloggen</button>
+      <button onclick={ausloggen} class="logout-btn">{$t('acc.logout')}</button>
 
       <!-- 🗑️ Konto löschen (Gefahrenzone) -->
       {#if !loeschBestaetigung}
-        <button onclick={() => (loeschBestaetigung = true)} class="delete-btn">🗑️ Konto löschen</button>
+        <button onclick={() => (loeschBestaetigung = true)} class="delete-btn">{$t('acc.delete')}</button>
       {:else}
         <div class="delete-confirm">
-          <p>Wirklich löschen? Alle deine Daten (Konto, Bestellungen, Favoriten) gehen verloren.</p>
+          <p>{$t('acc.delete_confirm')}</p>
           <div class="delete-row">
-            <button onclick={() => (loeschBestaetigung = false)} class="mfa-btn grau">Abbrechen</button>
-            <button onclick={kontoLoeschen} class="delete-btn endgueltig">Endgültig löschen</button>
+            <button onclick={() => (loeschBestaetigung = false)} class="mfa-btn grau">{$t('acc.cancel')}</button>
+            <button onclick={kontoLoeschen} class="delete-btn endgueltig">{$t('acc.delete_final')}</button>
           </div>
         </div>
       {/if}
     </div>
   {:else}
     <div class="no-user">
-      <p>Du bist aktuell nicht eingeloggt.</p>
-      <a href="/login" class="login-redirect-btn">Zum Login 🔑</a>
+      <p>{$t('acc.not_logged')}</p>
+      <a href="/login" class="login-redirect-btn">{$t('acc.to_login')}</a>
     </div>
   {/if}
 </div>
@@ -593,12 +520,39 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
+<<<<<<< HEAD
   .punkte-zahl {
     margin: 0;
     font-size: 1.75rem;
     font-weight: 850;
     letter-spacing: -0.03em;
   }
+=======
+  .info-block { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+  .split-row { display: flex; gap: 15px; width: 100%; }
+  .grow { flex: 1; }
+  .narrow { width: 30%; }
+  
+  .label { font-size: 0.75rem; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .value { font-size: 1.05rem; color: #222; font-weight: 700; padding: 4px 0; display: inline-block; }
+  .email-value { color: #673ab7; }
+  .placeholder-text { color: #ccc; font-weight: 400; font-style: italic; font-size: 0.95rem; }
+  .pw-link { color: #673ab7; }
+
+  .inline-input { width: 100%; padding: 10px; border: 2px solid #e1bee7; border-radius: 8px; font-size: 0.95rem; font-family: sans-serif; font-weight: 600; box-sizing: border-box; outline: none; background: #fff; }
+  .inline-input:focus { border-color: #673ab7; }
+  
+  .logout-btn { margin-top: 5px; padding: 14px; background: #fff; color: #dc3545; border: 2px solid #dc3545; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+  .logout-btn:hover { background: #dc3545; color: white; }
+  /* 🔐 MFA / 2FA */
+  .mfa-status { font-weight: 700; margin: 0; }
+  .mfa-status.an { color: #34c759; }
+  .mfa-status.aus { color: #d97706; }
+  .mfa-info { font-size: 0.9rem; color: #555; margin: 6px 0; }
+  .mfa-btn { flex: 1; min-width: 140px; padding: 12px; background: #673ab7; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+  .mfa-btn:hover { background: #542f95; }
+  .mfa-btn.grau { background: #f1f1f1; color: #333; }
+>>>>>>> a9ef3c9b025c8f030a8d077c2da01ea558e1105c
 
   .punkte-hint,
   .mfa-info,

@@ -1,9 +1,9 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { warenkorb, gesamtSumme, leereWarenkorb } from '$lib/stores/cart.js';
-  import { sendeBestellBestaetigung } from '$lib/services/email.js';
   import { pruefeKarte, kartenTyp, formatiereNummer } from '$lib/services/payment.js';
-  import { treuepunkte, punkteSammeln, punkteAbziehen, EINLOESE_SCHRITT, EINLOESE_WERT } from '$lib/stores/treue.js';
+  import { treuepunkte, ladeTreuepunkte, EINLOESE_SCHRITT, EINLOESE_WERT } from '$lib/stores/treue.js';
+  import { api, getToken } from '$lib/api.js';
 
   const LIEFERGEBUEHR = 2.49;
 
@@ -135,17 +135,23 @@
     }
   }
 
-  // Lässt den Status alle 3 Sekunden eine Phase weiterspringen + benachrichtigt.
+  // Zeigt den ECHTEN Liefer-Status (serverseitig aus der Zeit berechnet) an –
+  // damit Checkout und Tracking-Seite immer dasselbe anzeigen.
   function starteLieferstatus() {
     statusIndex = 0;
-    statusTimer = setInterval(() => {
-      if (statusIndex < STATUS_PHASEN.length - 1) {
-        statusIndex += 1;
-        benachrichtige(`Status: ${STATUS_PHASEN[statusIndex]}`); // 🔔 bei jedem Wechsel
-      } else {
-        clearInterval(statusTimer);
+    ladeLieferstatus();
+    statusTimer = setInterval(ladeLieferstatus, 5000);
+  }
+
+  async function ladeLieferstatus() {
+    if (!bestellnummer || !getToken()) return;
+    const res = await api('/api/orders/' + bestellnummer + '/status');
+    if (res.ok && res.daten && typeof res.daten.phase === 'number') {
+      if (res.daten.phase !== statusIndex) {
+        statusIndex = res.daten.phase;
+        benachrichtige(`Status: ${STATUS_PHASEN[statusIndex]}`); // 🔔 bei echtem Wechsel
       }
-    }, 3000);
+    }
   }
 
   // Berechnet den Liefertermin: bei "geplant" die gewählte Zeit, sonst jetzt + 40 Min.
@@ -204,17 +210,57 @@
     verlauf.unshift(bestellung);
     localStorage.setItem('lieferino_bestellungen', JSON.stringify(verlauf));
 
+    // 🗄️ Bestellung im Backend (DB) speichern – damit nichts verloren geht.
+    // Nur, wenn ein Token vorhanden ist (eingeloggt). Best-effort.
+    if (getToken()) {
+      const orderRes = await api('/api/orders', {
+        method: 'POST',
+        body: {
+          summe: endsumme,
+          zwischensumme: $gesamtSumme,
+          trinkgeld,
+          gutschein: aktiverGutschein?.code || '',
+          punkteEinloesen,
+          zahlungsart,
+          liefertermin,
+          positionen: $warenkorb.map((a) => ({
+            name: a.name, preis: a.preis, menge: a.menge, restaurant: a.restaurant
+          }))
+        }
+      });
+      // Die ECHTE Bestellnummer vom Server übernehmen (damit Anzeige + Tracking übereinstimmen).
+      if (orderRes.ok && orderRes.daten?.nummer) bestellnummer = orderRes.daten.nummer;
+      // 🏠 Die verwendete Lieferadresse zusätzlich im Profil (DB) speichern.
+      if (aktiveAdresse) {
+        const meRes = await api('/api/me');
+        if (meRes.ok && meRes.daten) {
+          const adressen = meRes.daten.adressen || [];
+          const schon = adressen.some(
+            (a) => a.strasse === aktiveAdresse.strasse && a.plz === aktiveAdresse.plz && a.hausnummer === aktiveAdresse.hausnummer
+          );
+          if (!schon) {
+            adressen.push({ label: aktiveAdresse.label || 'Lieferadresse', ...aktiveAdresse });
+            await api('/api/me', {
+              method: 'PUT',
+              body: {
+                username: meRes.daten.username, vorname: meRes.daten.vorname,
+                nachname: meRes.daten.nachname, geburtsdatum: meRes.daten.geburtsdatum,
+                adressen
+              }
+            });
+          }
+        }
+      }
+    }
+
     // Für die Rechnung merken (der Warenkorb wird gleich geleert).
     letzteBestellung = bestellung;
 
-    // ⭐ Treuepunkte: ggf. eingelöste Punkte abziehen, dann neue Punkte sammeln.
-    if (punkteRabatt > 0) punkteAbziehen(EINLOESE_SCHRITT);
-    punkteSammeln(endsumme);
+    // ⭐ Treuepunkte hat das Backend beim Bestellen aktualisiert -> echten Stand neu laden.
+    await ladeTreuepunkte();
 
-    // E-Mail-Bestätigung anstoßen (echter Versand erfolgt später übers Backend).
-    if (user?.email) {
-      await sendeBestellBestaetigung(user.email, bestellung, liefertermin);
-    }
+    // Die Bestellbestätigungs-E-Mail verschickt das Backend automatisch beim
+    // Anlegen der Bestellung (siehe POST /api/orders) – hier nichts nötig.
 
     // 🔔 Um Liefer-Benachrichtigungen bitten (falls noch nicht entschieden).
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {

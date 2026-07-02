@@ -46,7 +46,10 @@ export function login(angemeldetBleiben = false) {
 
 // Meldet den Nutzer ab – das Konto bleibt erhalten!
 export function logout() {
-  if (browser) localStorage.removeItem(SESSION_KEY);
+  if (browser) {
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('lieferino_token'); // API-Token (JWT) auch entfernen
+  }
   eingeloggt.set(false);
 }
 

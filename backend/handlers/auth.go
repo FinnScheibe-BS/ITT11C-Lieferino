@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"lieferino-backend/database"
@@ -13,32 +15,92 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// 🛡️ Brute-Force-Schutz: nach so vielen Fehlversuchen wird das Konto kurz gesperrt.
+const maxFehlversuche = 5
+const sperrDauer = 15 * time.Minute
+
+// ───────────────────────────────────────────────────────────────────────────
+// 🎫 TOKEN-TYPEN
+// "full"  = voller Zugang (24 h). Nur damit kommt man an geschützte Routen.
+// "setup" = darf NUR die MFA-Einrichtung machen (kurzlebig).
+// "mfa"   = Passwort war richtig, es fehlt nur noch der MFA-Code (kurzlebig).
+// ───────────────────────────────────────────────────────────────────────────
+
+func tokenMitTyp(userID uint, typ string, dauer time.Duration) (string, error) {
+	claims := jwt.MapClaims{
+		"sub": userID,
+		"typ": typ,
+		"exp": time.Now().Add(dauer).Unix(),
+	}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(jwtSecret())
+}
+
+func vollToken(userID uint) (string, error)  { return tokenMitTyp(userID, "full", 24*time.Hour) }
+func setupToken(userID uint) (string, error) { return tokenMitTyp(userID, "setup", 15*time.Minute) }
+func mfaToken(userID uint) (string, error)   { return tokenMitTyp(userID, "mfa", 5*time.Minute) }
+func resetToken(userID uint) (string, error) { return tokenMitTyp(userID, "reset", 15*time.Minute) }
+
+// userAusToken liest die User-ID aus dem Bearer-Token UND prüft, dass es vom
+// erwarteten Typ ist (z.B. "setup"). So kann man mit einem Setup-Token nicht
+// an die echten Daten kommen.
+func userAusToken(c *gin.Context, erwarteterTyp string) (uint, bool) {
+	header := c.GetHeader("Authorization")
+	if !strings.HasPrefix(header, "Bearer ") {
+		return 0, false
+	}
+	tokenStr := strings.TrimPrefix(header, "Bearer ")
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		return jwtSecret(), nil
+	})
+	if err != nil || !token.Valid {
+		return 0, false
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || claims["typ"] != erwarteterTyp {
+		return 0, false
+	}
+	sub, ok := claims["sub"].(float64)
+	if !ok {
+		return 0, false
+	}
+	return uint(sub), true
+}
+
 // Eingabe für die Registrierung.
 type registerInput struct {
 	Email        string `json:"email" binding:"required,email"`
-	Passwort     string `json:"passwort" binding:"required,min=8"`
+	Passwort     string `json:"passwort" binding:"required"`
 	Username     string `json:"username"`
 	Vorname      string `json:"vorname"`
 	Nachname     string `json:"nachname"`
 	Geburtsdatum string `json:"geburtsdatum"`
 }
 
-// 📝 Registrierung: legt einen neuen Nutzer an (Passwort wird gehasht).
+// 📝 Registrierung: legt einen neuen Nutzer an (Passwort gehasht) und schickt
+// einen E-Mail-Bestätigungscode. Es gibt NOCH KEIN Zugangstoken – das Konto ist
+// erst nutzbar, wenn E-Mail bestätigt UND MFA eingerichtet wurde.
 func Register(c *gin.Context) {
 	var in registerInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"fehler": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"fehler": "Bitte eine gültige E-Mail und ein Passwort angeben."})
 		return
 	}
 
-	// Gibt es die E-Mail schon?
+	// 🔐 Passwort gegen die Anforderungen prüfen – mit klarer Rückmeldung.
+	if fehlt := passwortAnforderungen(in.Passwort); len(fehlt) > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"fehler":        "Das Passwort erfüllt noch nicht alle Anforderungen.",
+			"anforderungen": fehlt,
+		})
+		return
+	}
+
 	var vorhanden models.User
 	if err := database.DB.Where("email = ?", in.Email).First(&vorhanden).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"fehler": "E-Mail ist bereits registriert"})
+		c.JSON(http.StatusConflict, gin.H{"fehler": "Diese E-Mail ist bereits registriert."})
 		return
 	}
 
-	// Passwort sicher hashen (bcrypt).
 	hash, err := bcrypt.GenerateFromPassword([]byte(in.Passwort), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"fehler": "Passwort konnte nicht verarbeitet werden"})
@@ -52,14 +114,21 @@ func Register(c *gin.Context) {
 		Vorname:      in.Vorname,
 		Nachname:     in.Nachname,
 		Geburtsdatum: in.Geburtsdatum,
+		IstAdmin:     strings.EqualFold(in.Email, adminEmail()),
 	}
 	if err := database.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"fehler": "Nutzer konnte nicht angelegt werden"})
 		return
 	}
 
-	token, _ := erstelleToken(user.ID)
-	c.JSON(http.StatusCreated, gin.H{"token": token, "user": user})
+	// 📧 Bestätigungscode erzeugen + per E-Mail schicken.
+	sendeVerifizierungsCode(&user)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"needsVerification": true,
+		"email":             user.Email,
+		"hinweis":           "Wir haben dir einen Bestätigungscode per E-Mail geschickt.",
+	})
 }
 
 // Eingabe für den Login.
@@ -68,11 +137,13 @@ type loginInput struct {
 	Passwort string `json:"passwort" binding:"required"`
 }
 
-// 🔑 Login: prüft E-Mail + Passwort und gibt ein JWT zurück.
+// 🔑 Login Schritt 1: prüft E-Mail + Passwort. Bei Erfolg wird NICHT sofort
+// eingeloggt – es kommt erst die MFA-Abfrage (oder ein Hinweis, dass noch
+// E-Mail-Bestätigung / MFA-Einrichtung fehlt).
 func Login(c *gin.Context) {
 	var in loginInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"fehler": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"fehler": "Bitte E-Mail und Passwort angeben."})
 		return
 	}
 
@@ -81,27 +152,76 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"fehler": "E-Mail oder Passwort falsch"})
 		return
 	}
+
 	if user.Gesperrt {
-		c.JSON(http.StatusForbidden, gin.H{"fehler": "Dieses Konto wurde gesperrt"})
+		c.JSON(http.StatusForbidden, gin.H{"fehler": "Dieses Konto wurde gesperrt."})
 		return
 	}
+
+	if user.GesperrtBis != nil && time.Now().Before(*user.GesperrtBis) {
+		rest := int(time.Until(*user.GesperrtBis).Minutes()) + 1
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"fehler": fmt.Sprintf("Zu viele Fehlversuche. Konto ist für noch ca. %d Minute(n) gesperrt.", rest),
+		})
+		return
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswortHash), []byte(in.Passwort)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"fehler": "E-Mail oder Passwort falsch"})
+		user.Fehlversuche++
+		if user.Fehlversuche >= maxFehlversuche {
+			bis := time.Now().Add(sperrDauer)
+			user.GesperrtBis = &bis
+			user.Fehlversuche = 0
+			database.DB.Save(&user)
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"fehler": fmt.Sprintf("Zu viele Fehlversuche. Konto ist jetzt %d Minuten gesperrt.", int(sperrDauer.Minutes())),
+			})
+			return
+		}
+		database.DB.Save(&user)
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"fehler": fmt.Sprintf("E-Mail oder Passwort falsch. Noch %d Versuch(e) bis zur Sperre.", maxFehlversuche-user.Fehlversuche),
+		})
 		return
 	}
 
-	token, _ := erstelleToken(user.ID)
-	c.JSON(http.StatusOK, gin.H{"token": token, "user": user})
-}
-
-// Erstellt ein JWT-Token (24 Stunden gültig) für einen Nutzer.
-func erstelleToken(userID uint) (string, error) {
-	claims := jwt.MapClaims{
-		"sub": userID,
-		"exp": time.Now().Add(24 * time.Hour).Unix(),
+	// Passwort stimmt -> Fehlversuche zurücksetzen + Admin-Status synchronisieren.
+	sollAdmin := strings.EqualFold(user.Email, adminEmail())
+	if user.Fehlversuche != 0 || user.GesperrtBis != nil || user.IstAdmin != sollAdmin {
+		user.Fehlversuche = 0
+		user.GesperrtBis = nil
+		user.IstAdmin = sollAdmin
+		database.DB.Save(&user)
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret())
+
+	// 📧 E-Mail noch nicht bestätigt? -> neuen Code schicken, Zugang verweigern.
+	if !user.EmailVerifiziert {
+		sendeVerifizierungsCode(&user)
+		c.JSON(http.StatusForbidden, gin.H{
+			"fehler":            "Deine E-Mail ist noch nicht bestätigt. Wir haben dir einen neuen Code geschickt.",
+			"needsVerification": true,
+			"email":             user.Email,
+		})
+		return
+	}
+
+	// 🔐 MFA noch nicht eingerichtet? -> Setup-Token geben, Zugang verweigern.
+	if !user.MFAAktiv {
+		st, _ := setupToken(user.ID)
+		c.JSON(http.StatusForbidden, gin.H{
+			"fehler":        "Bitte richte zuerst die Zwei-Faktor-Authentifizierung (MFA) ein.",
+			"needsMfaSetup": true,
+			"setupToken":    st,
+		})
+		return
+	}
+
+	// ✅ Alles da -> jetzt nur noch der MFA-Code (Schritt 2).
+	mt, _ := mfaToken(user.ID)
+	c.JSON(http.StatusOK, gin.H{
+		"mfaRequired": true,
+		"mfaToken":    mt,
+	})
 }
 
 func jwtSecret() []byte {
@@ -110,4 +230,27 @@ func jwtSecret() []byte {
 		s = "dev-secret-bitte-aendern"
 	}
 	return []byte(s)
+}
+
+// 📧 EmailCheck sagt, ob eine E-Mail noch frei ist (für die frühe Anzeige
+// "E-Mail existiert schon" schon in Schritt 1 der Registrierung).
+func EmailCheck(c *gin.Context) {
+	var in struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"fehler": "Bitte eine gültige E-Mail angeben."})
+		return
+	}
+	var vorhanden models.User
+	frei := database.DB.Where("email = ?", in.Email).First(&vorhanden).Error != nil
+	c.JSON(http.StatusOK, gin.H{"frei": frei})
+}
+
+// adminEmail liefert die E-Mail, die Admin-Rechte bekommt.
+func adminEmail() string {
+	if e := os.Getenv("ADMIN_EMAIL"); e != "" {
+		return e
+	}
+	return "admin@lieferino.de"
 }
