@@ -41,6 +41,7 @@ func main() {
 		auth.Use(middleware.RateLimit(10, time.Minute))
 		{
 			auth.POST("/register", handlers.Register)
+			auth.POST("/email-check", handlers.EmailCheck)
 			auth.POST("/login", handlers.Login)
 			// 📧 E-Mail-Verifizierung
 			auth.POST("/verify-email", handlers.VerifyEmail)

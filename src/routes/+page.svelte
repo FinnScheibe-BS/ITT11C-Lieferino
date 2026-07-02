@@ -23,6 +23,9 @@
   let adressFehler = $state("");
   let registrierFehler = $state("");
   let registrierAnforderungen = $state([]);
+  let emailFehler = $state("");        // "E-Mail existiert schon" (Schritt 1)
+  let prueftEmail = $state(false);
+  let agbAkzeptiert = $state(false);   // Pflicht-Häkchen AGB + Datenschutz
   let usernameInput = $state("");
   let vornameInput = $state("");
   let nachnameInput = $state("");
@@ -86,11 +89,22 @@
     }
   });
 
-  // Schritt 1 -> 2: Das Passwort ist (per Button-disabled) schon stark genug.
-  function geheZuSchritt2(e) {
+  // Schritt 1 -> 2: Passwort stark genug + E-Mail früh auf Eindeutigkeit prüfen.
+  async function geheZuSchritt2(e) {
     e.preventDefault();
     if (!passwortStaerke.istSicher) return;
     if (emailInput.trim() === "" || passwortInput.trim() === "") return;
+
+    // 📧 Früh prüfen, ob die E-Mail schon vergeben ist.
+    emailFehler = "";
+    prueftEmail = true;
+    const res = await api('/api/auth/email-check', { method: 'POST', body: { email: emailInput.trim() } });
+    prueftEmail = false;
+    if (res.ok && res.daten && res.daten.frei === false) {
+      emailFehler = "Diese E-Mail ist bereits registriert. Bitte melde dich an. 📧";
+      return;
+    }
+    // (Backend offline -> trotzdem weiter; der Server lehnt sonst beim Anlegen ab.)
     registrierFehler = "";
     loginSchritt = 2;
   }
@@ -127,6 +141,10 @@
 
   async function registrationAbschliessen(e) {
     e.preventDefault();
+    if (!agbAkzeptiert) {
+      adressFehler = "Bitte akzeptiere die AGB und die Datenschutzerklärung. ✅";
+      return;
+    }
     if (!/^\d{5}$/.test(plzInput.trim())) {
       adressFehler = "Die PLZ muss aus genau 5 Ziffern bestehen. 🔢";
       return;
@@ -268,8 +286,9 @@
               </div>
             {/if}
           </div>
-          <button type="submit" class="gold-btn" disabled={!passwortStaerke.istSicher}>
-            Weiter zu deinen Details →
+          {#if emailFehler}<p class="err">{emailFehler}</p>{/if}
+          <button type="submit" class="gold-btn" disabled={!passwortStaerke.istSicher || prueftEmail}>
+            {prueftEmail ? 'Prüfe E-Mail…' : 'Weiter zu deinen Details →'}
           </button>
           <p class="auth-hint">Schon registriert? <a href="/login">Hier einloggen 🔑</a></p>
         </form>
@@ -348,9 +367,18 @@
               {/if}
             </div>
           {/if}
+
+          <!-- ✅ Pflicht: AGB + Datenschutz akzeptieren -->
+          <label class="agb-check">
+            <input type="checkbox" bind:checked={agbAkzeptiert} required />
+            <span>Ich akzeptiere die
+              <a href="/agb" target="_blank" rel="noopener">AGB</a> und die
+              <a href="/datenschutz" target="_blank" rel="noopener">Datenschutzerklärung</a>.</span>
+          </label>
+
           <div class="btn-row">
             <button type="button" class="ghost-btn" onclick={() => loginSchritt = 2}>← Zurück</button>
-            <button type="submit" class="gold-btn flex1" disabled={prueftAdresse}>
+            <button type="submit" class="gold-btn flex1" disabled={prueftAdresse || !agbAkzeptiert}>
               {prueftAdresse ? "Prüfe Adresse… ⏳" : "Registrierung abschließen 🎉"}
             </button>
           </div>
@@ -688,6 +716,9 @@
   .err-list li { color: #ff6961; font-size: 0.8rem; line-height: 1.5; }
   .auth-hint { text-align: center; font-size: 0.84rem; color: var(--text-muted); margin: 4px 0 0; }
   .auth-hint a { color: var(--gold-text); font-weight: 600; }
+  .agb-check { display: flex; align-items: flex-start; gap: 8px; font-size: 0.84rem; color: var(--text-muted); text-align: left; margin: 4px 0; }
+  .agb-check input { margin-top: 3px; flex-shrink: 0; width: auto; }
+  .agb-check a { color: var(--gold-text); font-weight: 600; text-decoration: underline; }
 
   /* ══════════════════════════════════════════════════════════════
      STARTSEITE

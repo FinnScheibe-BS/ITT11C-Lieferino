@@ -232,6 +232,21 @@ func jwtSecret() []byte {
 	return []byte(s)
 }
 
+// 📧 EmailCheck sagt, ob eine E-Mail noch frei ist (für die frühe Anzeige
+// "E-Mail existiert schon" schon in Schritt 1 der Registrierung).
+func EmailCheck(c *gin.Context) {
+	var in struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"fehler": "Bitte eine gültige E-Mail angeben."})
+		return
+	}
+	var vorhanden models.User
+	frei := database.DB.Where("email = ?", in.Email).First(&vorhanden).Error != nil
+	c.JSON(http.StatusOK, gin.H{"frei": frei})
+}
+
 // adminEmail liefert die E-Mail, die Admin-Rechte bekommt.
 func adminEmail() string {
 	if e := os.Getenv("ADMIN_EMAIL"); e != "" {
