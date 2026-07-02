@@ -299,20 +299,20 @@
 
   /* ─── Card Info Text ──────────────────────────────────────────────── */
   .card-info {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: var(--textbox-h);
-    box-sizing: border-box;
-    overflow: hidden;
-    padding: 14px 18px 16px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: 8px;
-    z-index: 3;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0) 100%);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--textbox-h);
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 14px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  z-index: 3;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0) 100%);
   }
 
   .card-info h3 {
@@ -330,7 +330,7 @@
     margin: 0;
     color: rgba(255, 220, 100, 0.9) !important;
     font-size: 0.82rem;
-    line-height: 0.8;
+    line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
