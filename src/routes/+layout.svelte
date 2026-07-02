@@ -431,11 +431,16 @@
     box-shadow: 0 0 0 3px rgba(230,168,0,0.15) !important;
   }
 
-  :global(html[data-theme='light'] input),
+  :global(html[data-theme='light'] input:not([type='checkbox']):not([type='radio'])),
   :global(html[data-theme='light'] select),
   :global(html[data-theme='light'] textarea) {
-    background: rgba(255, 248, 220, 0.60) !important;
+    background: rgba(255, 250, 235, 0.85) !important;
     color: #1a1200 !important;
+  }
+  /* Platzhalter im Light-Mode gut lesbar (aber klar als Platzhalter erkennbar) */
+  :global(html[data-theme='light'] input::placeholder),
+  :global(html[data-theme='light'] textarea::placeholder) {
+    color: rgba(26, 18, 0, 0.45) !important;
   }
 
   /* ─── Überschriften ─── NEU: Geist für Headlines ────────────────────── */

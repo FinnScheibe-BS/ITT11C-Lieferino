@@ -704,10 +704,11 @@
   .pw-fill { height: 100%; border-radius: 6px; transition: width 0.3s, background 0.3s; }
   .pw-label { font-size: 0.78rem; font-weight: 700; display: block; margin-top: 5px; }
   .pw-rules { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 5px 14px; }
-  .pw-rules li { font-size: 0.76rem; color: rgba(245,240,232,0.40); }
-  .pw-rules li::before { content: "✗ "; color: #ff453a; }
+  .pw-rules li { font-size: 0.76rem; color: rgba(245,240,232,0.78); }
+  .pw-rules li::before { content: "✗ "; color: #ff453a; font-weight: 700; }
   .pw-rules li.ok { color: #30d158; }
   .pw-rules li.ok::before { content: "✓ "; color: #30d158; }
+  :global(html[data-theme='light']) .pw-rules li { color: rgba(40, 28, 0, 0.75); }
 
   /* Feedback */
   .err { color: #ff453a; font-size: 0.82rem; font-weight: 600; margin: 2px 0 0; }

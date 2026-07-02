@@ -213,15 +213,24 @@ func bestellBestaetigungText(user *models.User, order *models.Order) string {
 // Hintergrund-Job. Gesamte Lieferzeit: 30 Minuten, in 4 Phasen.
 var lieferPhasen = []string{"Bestellung erhalten", "Wird zubereitet", "Unterwegs", "Geliefert"}
 
+// Phasen-Grenzen in Minuten seit Bestellung (Zubereitung + Lieferung bewusst
+// etwas länger, damit es realistischer wirkt):
+//   0–3 Min:   Bestellung erhalten
+//   3–15 Min:  Wird zubereitet
+//   15–35 Min: Unterwegs
+//   ab 35 Min: Geliefert
 func statusBerechnen(erstellt time.Time) (int, string) {
-	const gesamt = 30 * time.Minute
-	anteil := float64(time.Since(erstellt)) / float64(gesamt)
-	if anteil < 0 {
-		anteil = 0
-	}
-	idx := int(anteil * float64(len(lieferPhasen)))
-	if idx > len(lieferPhasen)-1 {
-		idx = len(lieferPhasen) - 1
+	min := time.Since(erstellt).Minutes()
+	idx := 0
+	switch {
+	case min >= 35:
+		idx = 3
+	case min >= 15:
+		idx = 2
+	case min >= 3:
+		idx = 1
+	default:
+		idx = 0
 	}
 	return idx, lieferPhasen[idx]
 }

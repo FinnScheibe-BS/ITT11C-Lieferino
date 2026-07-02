@@ -135,17 +135,23 @@
     }
   }
 
-  // Lässt den Status alle 3 Sekunden eine Phase weiterspringen + benachrichtigt.
+  // Zeigt den ECHTEN Liefer-Status (serverseitig aus der Zeit berechnet) an –
+  // damit Checkout und Tracking-Seite immer dasselbe anzeigen.
   function starteLieferstatus() {
     statusIndex = 0;
-    statusTimer = setInterval(() => {
-      if (statusIndex < STATUS_PHASEN.length - 1) {
-        statusIndex += 1;
-        benachrichtige(`Status: ${STATUS_PHASEN[statusIndex]}`); // 🔔 bei jedem Wechsel
-      } else {
-        clearInterval(statusTimer);
+    ladeLieferstatus();
+    statusTimer = setInterval(ladeLieferstatus, 5000);
+  }
+
+  async function ladeLieferstatus() {
+    if (!bestellnummer || !getToken()) return;
+    const res = await api('/api/orders/' + bestellnummer + '/status');
+    if (res.ok && res.daten && typeof res.daten.phase === 'number') {
+      if (res.daten.phase !== statusIndex) {
+        statusIndex = res.daten.phase;
+        benachrichtige(`Status: ${STATUS_PHASEN[statusIndex]}`); // 🔔 bei echtem Wechsel
       }
-    }, 3000);
+    }
   }
 
   // Berechnet den Liefertermin: bei "geplant" die gewählte Zeit, sonst jetzt + 40 Min.
@@ -207,7 +213,7 @@
     // 🗄️ Bestellung im Backend (DB) speichern – damit nichts verloren geht.
     // Nur, wenn ein Token vorhanden ist (eingeloggt). Best-effort.
     if (getToken()) {
-      await api('/api/orders', {
+      const orderRes = await api('/api/orders', {
         method: 'POST',
         body: {
           summe: endsumme,
@@ -222,6 +228,8 @@
           }))
         }
       });
+      // Die ECHTE Bestellnummer vom Server übernehmen (damit Anzeige + Tracking übereinstimmen).
+      if (orderRes.ok && orderRes.daten?.nummer) bestellnummer = orderRes.daten.nummer;
       // 🏠 Die verwendete Lieferadresse zusätzlich im Profil (DB) speichern.
       if (aktiveAdresse) {
         const meRes = await api('/api/me');

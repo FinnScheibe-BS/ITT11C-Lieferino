@@ -1,150 +1,145 @@
-# 📋 Fortschritt – Lieferino
+# 📋 Lieferino – Was die App alles kann
 
-> ### ⚡ WICHTIG ZUERST
-> Falls nach Änderungen an den Restaurant-/Menü-Daten in der App etwas **nicht passt**,
-> im Projektordner `Lieferino` einmal diesen Befehl ausführen:
-> ```
-> node tools/refresh.mjs
-> ```
-> Danach `npm run dev` neu laden – dann passt alles wieder. ✅
+Vollständige Übersicht über die Funktionen von **Frontend** (SvelteKit), **Backend**
+(Go / Gin) und **Datenbank** (PostgreSQL) – jeweils mit einer kurzen Erklärung, wie es
+funktioniert.
 
-Übersicht über alles, was am Frontend dazugekommen ist. Backend-Themen sind im Code
-mit großen `🚨`-Hinweisen markiert (dort steht jeweils, welcher Endpunkt gebraucht wird).
+> **Aufbau:** Das Frontend spricht über eine REST-API (`http://localhost:8090`) mit dem
+> Go-Backend, das alle Daten in einer PostgreSQL-Datenbank speichert. Backend + DB laufen
+> in Docker. Ist das Backend aus, funktioniert die App im Browser-Modus (localStorage) weiter.
 
 ---
 
-## 👤 Registrierung & Konto
-- **3-Schritt-Registrierung** mit Validierung:
-  - **E-Mail-Verifizierung** per 6-stelligem Code.
-  - **Passwort-Sicherheit**: Live-Stärke-Anzeige + Checkliste, „Weiter" erst ab sicherem Passwort.
-  - **Namens-Check**: Vor-/Nachname min. 2 Buchstaben, keine Zahlen.
-  - **Adress-Check** über OpenStreetMap + **PLZ-Format** (5 Ziffern).
-- **Account-Seite**: Daten bearbeiten, **mehrere Adressen** verwalten,
-  **Treuepunkte** ansehen, Konto löschen.
+## 👤 Registrierung & E-Mail-Verifizierung
+**Was:** Konto anlegen in 3 Schritten (Login-Daten → persönliche Daten → Adresse). Jede
+E-Mail ist nur **einmal** verwendbar. Nach dem Anlegen muss die E-Mail per **6-stelligem
+Code** bestätigt werden.
+**Wie:** Das Frontend prüft schon in Schritt 1 über `POST /api/auth/email-check`, ob die
+E-Mail frei ist (sonst „E-Mail bereits registriert"). Beim Absenden legt
+`POST /api/auth/register` den Nutzer in der DB an (E-Mail-Spalte ist eindeutig) und schickt
+den Code per E-Mail. `POST /api/auth/verify-email` prüft den Code. Ein Konto ist erst
+nutzbar, wenn E-Mail bestätigt **und** MFA eingerichtet ist. Bei der Registrierung müssen
+außerdem **AGB und Datenschutz** per Pflicht-Häkchen akzeptiert werden (Links zu `/agb` und
+`/datenschutz`).
 
-## 🔐 Login & Sicherheit
-- **Echtes Login mit Session** (`/login`): „Angemeldet bleiben", Session-Timeout,
-  Login-Sperre nach mehreren Fehlversuchen, gebannte Konten werden abgewiesen.
-- **Zwei-Faktor (2FA/MFA)**: per **E-Mail-Code** oder **Authenticator-App (TOTP)**,
-  inkl. **Backup-Codes**.
-- **Passwort vergessen** (`/passwort-vergessen`): Reset per Code.
-- Trennung von **Konto** (bleibt gespeichert) und **Session** (Logout beendet nur die Session).
+## 🔐 Login mit Zwei-Faktor (MFA) – Pflicht
+**Was:** Anmeldung ist **zweistufig**: Passwort, danach ein 6-stelliger Code aus einer
+**Authenticator-App** (TOTP, z. B. Google Authenticator/Authy).
+**Wie:** `POST /api/auth/login` prüft das Passwort serverseitig (bcrypt-Hash). Stimmt es,
+fordert der Server den zweiten Faktor an; `POST /api/auth/mfa/verify` prüft den TOTP-Code und
+gibt erst dann ein Zugangs-Token (JWT) aus. Die MFA wird bei der Registrierung über einen
+**QR-Code** eingerichtet (`/mfa/setup` + `/mfa/enable`).
 
-## 🍽️ Restaurants & Speisekarte
-- **Zentrale Datenquelle** unter `src/lib/data` (eine Quelle für alle Seiten).
-- **Restaurant-Liste** (`/restaurants`): Suche, Küchen-Filter, Sortierung,
-  **Favoriten-Filter**, **Vegetarisch-Filter**, **„Jetzt geöffnet"-Filter**,
-  Durchschnitts-Bewertung aus Reviews.
-- **Detailseite**: echte Speisekarte mit **Mengen-Auswahl**, **Veggie-Tags & Allergenen**,
-  **Öffnungszeiten** (geöffnet/geschlossen), Favoriten-Herz.
-- **Bewertungen**: nur möglich, wenn man dort **nachweislich bestellt** hat;
-  Bewertung im Kopf ist anklickbar (springt zu den Reviews).
+## 🔑 Passwort zurücksetzen
+**Was:** „Passwort vergessen" → Einmal-Code per E-Mail → Code eingeben → neues Passwort
+wählen + bestätigen.
+**Wie:** `POST /api/auth/reset-anfordern` schickt den Code (verrät aus Datenschutzgründen
+nicht, ob die E-Mail existiert), `/reset-code` prüft ihn, `/reset-neu` setzt das neue
+Passwort (wieder gegen die Passwort-Regeln geprüft, bcrypt-gehasht gespeichert).
 
-## 🛒 Warenkorb (`/cart`)
-- Mengen ändern, entfernen, Zwischensumme/Liefergebühr/Gesamt.
-- **Nach Restaurant gruppiert**, Mindestbestellwert-Check, bleibt nach Neuladen erhalten.
+## 🛡️ Sicherheit
+**Was:** Mehrere Schutzmechanismen gegen Missbrauch.
+**Wie:**
+- **Passwörter** werden nur als **bcrypt-Hash** gespeichert, nie im Klartext.
+- **Starke Passwort-Policy** (≥10 Zeichen, Groß-/Kleinbuchstabe, Zahl, Sonderzeichen) – mit
+  Live-Checkliste im Frontend und identischer Prüfung im Backend.
+- **Rate-Limiting** auf Login/Registrierung/E-Mail (pro IP) gegen Brute-Force/Spam.
+- **Account-Sperre** nach zu vielen Fehlversuchen (temporär), plus Admin-Sperre.
+- **CORS-Whitelist** (nur das eigene Frontend darf zugreifen) + Security-Header.
+- **MFA ist Pflicht** für jeden Konto-Zugang.
 
-## 🧾 Checkout (`/checkout`)
-- Lieferadresse + **Karten-Vorschau** der Adresse, **Auswahl unter mehreren Adressen**.
-- **Lieferzeit**: sofort oder **geplant** (Uhrzeit wählen).
-- **Zahlungsarten**: PayPal, Barzahlung, **Kreditkarte mit Validierung**
-  (Luhn-Prüfung, Ablaufdatum, CVV, Kartentyp-Erkennung).
-- **Trinkgeld** (0/5/10/15 %), **Gutscheincodes** (`LIEFERINO10`, `WILLKOMMEN5`, `GRATIS`).
-- **Treuepunkte einlösen** (100 Punkte = 5 € Rabatt).
-- **Bestellnummer**, voraussichtlicher **Liefertermin**, **Live-Lieferstatus**,
-  **Browser-Benachrichtigung** bei Status-Wechsel, E-Mail-Bestätigung.
-- **Rechnung als PDF / zum Drucken**.
+## 🍽️ Verkäufer & Speisekarte
+**Was:** Restaurant-Liste mit Suche, Küchen-Filter, Sortierung (u. a. nach Bewertung),
+Favoriten-/Vegetarisch-/„Jetzt geöffnet"-Filter; Detailseite mit Speisekarte, Mengenwahl,
+Öffnungszeiten.
+**Wie:** Alle **Verkäufer und Produkte liegen in der Datenbank** (`GET /api/restaurants`).
+Der Admin kann Restaurants **aktiv/deaktiv** schalten – deaktivierte sind auf der Seite
+sofort ausgeblendet (Frontend liest den Status vom Backend).
 
-## 🚚 Live-Tracking (`/tracking`)
-- Zeigt den Liefer-Fortschritt der letzten Bestellung (aktualisiert sich automatisch).
+## 🛒 Warenkorb & 🧾 Checkout
+**Was:** Warenkorb (Mengen, Zwischensumme, nach Restaurant gruppiert), Checkout mit
+Lieferadresse (+ Kartenvorschau), Lieferzeit, Zahlungsart (PayPal/Bar/Kreditkarte mit
+Luhn-Validierung), Trinkgeld, Gutschein, Treuepunkte, Rechnung als PDF.
+**Wie – wichtig (Manipulationsschutz):** Beim Bestellen (`POST /api/orders`) prüft das
+**Backend jeden Artikel + Preis gegen die Datenbank**. Wer im Browser den Preis ändert,
+wird abgelehnt. Auch **Gutschein, Liefergebühr, Mindestbestellwert und Treuepunkte** werden
+**serverseitig** berechnet/erzwungen – die Endsumme kommt autoritativ vom Server.
 
-## ⭐ Treuepunkte
-- 1 Punkt je 1 € Bestellwert; im Account sichtbar, im Checkout einlösbar.
+## 🚚 Bestell-Status & Live-Tracking
+**Was:** Bestellung durchläuft: *Bestellung erhalten → Wird zubereitet → Unterwegs →
+Geliefert*. Checkout-Erfolgsseite und Tracking-Seite zeigen denselben Status.
+**Wie:** Der Status wird **serverseitig aus der vergangenen Zeit** seit der Bestellung
+berechnet (`GET /api/orders/:nummer/status`) – manipulationssicher und ohne Hintergrund-Job.
+Beide Seiten fragen denselben Endpunkt ab, daher immer konsistent.
 
-## 📍 Mehrere Adressen
-- Im Account verwaltbar (hinzufügen/löschen), im Checkout auswählbar.
+## ⭐ Bewertungen
+**Was:** Sterne + Text pro Restaurant, Durchschnitt auf den Kacheln.
+**Wie:** Bewertungen liegen in der DB. `POST /api/restaurants/:slug/reviews` erlaubt eine
+Bewertung **nur, wenn man dort nachweislich bestellt hat** (serverseitig geprüft).
+`GET /api/reviews/schnitt` liefert Durchschnitt + Anzahl je Restaurant.
 
-## 📦 Bestellverlauf (`/bestellungen`)
-- Alle früheren Bestellungen mit Bestellnummer, **Detailansicht**, „🔁 Nochmal bestellen",
-  **🚚 Verfolgen** (Live-Tracking) und **🧾 Rechnung** (PDF/Druck).
+## ❤️ Favoriten & ⭐ Treuepunkte
+**Was:** Lieblings-Restaurants markieren; Treuepunkte sammeln (1 Punkt je 1 €) und im
+Checkout einlösen (100 Punkte = 5 € Rabatt).
+**Wie:** Beides liegt **pro Konto in der Datenbank** (`/api/favorites`, Punktestand am
+Nutzer). Punkte werden beim Bestellen serverseitig gutgeschrieben/abgezogen – nicht im
+Browser manipulierbar.
 
-## 🛠️ Admin (`/admin`) — bleibt auf Deutsch
-- Durch einen **Sicherheitsschlüssel geschützt** (Passwort ist im Code hinterlegt – nicht hier dokumentiert).
-- **Editier-Modus-Schalter** (bleibt während der Sitzung erhalten).
-- **Tabs**:
-  - **Übersicht**: Kennzahlen + **Umsatz-Diagramm** (7 Tage).
-  - **Lieferanten**: Restaurants **aktivieren/deaktivieren** (deaktivierte sind für normale Nutzer unsichtbar).
-  - **Bewertungen**: bearbeiten/löschen.
-  - **Nutzer**: **bannen/entbannen**, **MFA zurücksetzen**.
+## 📦 Bestellverlauf & Profil
+**Was:** Frühere Bestellungen mit Details, „Nochmal bestellen", Verfolgen, Rechnung.
+Profil + mehrere Lieferadressen verwalten.
+**Wie:** `GET /api/orders` (Bestellungen) und `GET/PUT /api/me` (Profil/Adressen) – alles in
+der DB gespeichert, damit nichts verloren geht.
+
+## 📧 E-Mail-Versand
+**Was:** Verifizierungs-Code, Passwort-Reset-Code und **Bestellbestätigung** kommen per Mail.
+**Wie:** Das Backend verschickt echte E-Mails über ein Gmail-Konto (SMTP). Die
+Bestellbestätigung wird direkt beim Anlegen der Bestellung im Hintergrund verschickt.
+
+## 🛠️ Admin-Bereich (`/admin`) — bleibt auf Deutsch
+**Was:** Dashboard mit Kennzahlen (Umsatz, Bestellungen, Artikel, Nutzer, aktive
+Restaurants), Verwaltung von Restaurants (aktiv/deaktiv), Bewertungen (löschen) und Nutzern
+(sperren/entsperren, MFA zurücksetzen).
+**Wie:** Zugang nur für Admin-Konten – geprüft über eine **Rollen-Middleware** im Backend
+(`/api/admin/...`). Wer kein Admin ist, bekommt 403.
+
+> ### 🔑 Admin-Zugang zum Testen (Klartext)
+> - **E-Mail:** `admin@lieferino.de`
+> - **Passwort:** `Admin!Lieferino2026`
+> - **MFA-Setup-Key (TOTP):** `DTKYE5RLIBA5NDVWAPVWXXVCZ6WX4U64`
+>
+> **So einloggen:** E-Mail + Passwort eingeben → beim MFA-Schritt den Setup-Key in einer
+> Authenticator-App hinterlegen (z. B. Google Authenticator → „Setup-Schlüssel eingeben")
+> und den angezeigten 6-stelligen Code eintippen.
+> *(Wer Admin wird, steuert die Umgebungsvariable `ADMIN_EMAIL`; Standard ist
+> `admin@lieferino.de`.)*
 
 ## 🌍 Mehrsprachigkeit
-- **Sprach-Umschalter** im Menü, Auswahl bleibt gespeichert (`src/lib/i18n.js`).
-- Sprachen: 🇩🇪 Deutsch, 🇬🇧 English, 🇪🇸 Español, 🇷🇺 Русский, 🇯🇵 日本語, 🏛️ Latina,
-  🟪 **Enchanting** (Minecraft-Verzauberungstisch – braucht die Schrift `static/fonts/enchantment.ttf`).
-- Übersetzt sind aktuell Navigation, Startseite und Restaurant-Liste (weitere Seiten folgen).
-- Admin ist bewusst **nicht** übersetzt.
+**Was:** Umschalter im Menü; Sprachen: 🇩🇪 Deutsch, 🇬🇧 English, 🇪🇸 Español, 🇷🇺 Русский,
+🇯🇵 日本語, 🏛️ Latina, 🟪 Enchanting (Minecraft-Schrift).
+**Wie:** Zentrales Wörterbuch (`src/lib/i18n.js`), Auswahl bleibt im localStorage. Übersetzt
+sind Navigation, Startseite, Restaurant-Liste, Login/MFA/Passwort-Reset, Account und Tracking.
+Admin bleibt bewusst deutsch. *(Checkout + Registrierungsformular sind noch überwiegend deutsch.)*
 
 ## 🌙 Dark-/Light-Mode
-- Runder Schalter unten links auf jeder Seite, Auswahl bleibt gespeichert.
+**Was:** Umschalter unten links auf jeder Seite, Auswahl bleibt gespeichert.
+**Wie:** Über ein `data-theme`-Attribut am `<html>`; Farben passen sich per CSS-Variablen an.
 
 ## 🥚 Easter Eggs
-- **Jufalls-Jumpscare**: pro Sekunde 1-zu-10000-Chance auf ein kurzes GIF + Sound (global).
-- **Konami-Code** (↑ ↑ ↓ ↓ ← → ← → B A)
-- **„Drachenlord"** in die Suche tippen
-- **`pizzapizzapizza`** in die Suche → Konfetti + Geheim-Gutschein `PIZZAPARTY` (25 %).
-- **Geburtstag**: am Geburtstag (laut Konto) → Konfetti + Code `GEBURTSTAG` (20 %).
-- **Hero-Titel 10× klicken** → Konfetti-Überraschung.
-- **`foodcursor`** in die Suche → Emoji-Spur folgt der Maus (umschaltbar).
-- **`schnee`** / **`winter`** in die Suche → fallender Saison-Effekt (umschaltbar).
-- **`dragonpizza`** in die Suche → schaltet ein **geheimes Restaurant** frei.
+Konami-Code (↑↑↓↓←→←→BA), „Drachenlord"/`pizzapizzapizza`/`dragonpizza`/`foodcursor`/
+`schnee` in die Suche tippen, Geburtstags-Konfetti, Hero-Titel 10× klicken, Zufalls-Jumpscare.
 
 ---
 
-## 🚨 Wo das Backend weiterarbeiten muss (Checkliste)
+## 🧱 Technik-Stack
+- **Frontend:** SvelteKit (Svelte 5), Vite.
+- **Backend:** Go mit Gin, GORM, JWT, bcrypt, TOTP.
+- **Datenbank:** PostgreSQL (in Docker).
+- **Start:** `docker compose up -d --build` (Backend + DB) + `npm run dev` (Frontend),
+  oder die Start-Skripte (`start-linux.sh`, `start-mac.command`, `start-windows.bat`).
+  Optional: Kubernetes-Aufbau mit hochverfügbarer Patroni-Datenbank (siehe `k8s/README.md`).
 
-Aktuell läuft alles im Frontend (Daten im `localStorage`). Damit es „echt" wird,
-muss das Backend folgende Punkte übernehmen:
-
-### Konten & Login
-- [ ] **Registrierung** speichern: `POST /api/auth/register` (Nutzer in Datenbank).
-- [ ] **Login** serverseitig prüfen: `POST /api/auth/login` (kein Klartext-Vergleich im Browser).
-- [ ] **Passwörter hashen** (z. B. bcrypt) – niemals im Klartext speichern.
-- [ ] **Sessions/Token** serverseitig verwalten (z. B. JWT), inkl. Ablauf.
-- [ ] **Login-Sperre / Rate-Limiting** serverseitig (Frontend-Sperre ist umgehbar).
-
-### E-Mail (Service `src/lib/services/email.js` + Route `src/routes/api/email`)
-- [ ] **Echten Versand** über das Gmail-Konto (App-Passwort in `.env`, siehe `EMAIL-SETUP.md`).
-- [ ] **Verifizierungs-/Reset-Codes** serverseitig erzeugen, senden und prüfen.
-- [ ] **Bestellbestätigung + Liefertermin** per E-Mail verschicken.
-
-### Zwei-Faktor (MFA, `src/lib/services/mfa.js`)
-- [ ] **TOTP-Secret** serverseitig erzeugen + sicher speichern, Codes serverseitig prüfen.
-- [ ] **E-Mail-2FA-Codes** serverseitig.
-- [ ] **Backup-Codes** serverseitig verwalten (Verbrauch zählen).
-
-### Adresse
-- [ ] **Adress-Prüfung** über einen eigenen Endpunkt proxen (statt direkt OpenStreetMap; Rate-Limit).
-
-### Restaurants & Bewertungen
-- [ ] **Restaurant-/Speisekarten-Daten** aus der Datenbank ausliefern.
-- [ ] **Aktiv/Deaktiviert-Status** speichern: `PATCH /api/admin/restaurants/:slug`;
-      normalen Nutzern nur **aktive** Restaurants ausliefern.
-- [ ] **Bewertungen** zentral speichern/laden (`GET/POST /api/bewertungen`) und „nur nach
-      Bestellung" serverseitig erzwingen.
-- [ ] **Favoriten** pro Nutzer serverseitig speichern.
-
-### Bestellungen & Zahlung
-- [ ] **Bestellungen** speichern + ans Restaurant melden: `POST /api/bestellungen`
-      (mit Bestellnummer, Artikeln, Summe, Trinkgeld, Liefertermin).
-- [ ] **Echte Zahlung** über einen Anbieter (z. B. Stripe/PayPal) – Kartendaten NIE
-      selbst speichern/übertragen (nur Token).
-- [ ] **Gutscheincodes** serverseitig prüfen/einlösen (Missbrauch/Mehrfachnutzung verhindern).
-
-### Admin
-- [ ] **Echte Admin-Authentifizierung** statt des Frontend-Schlüssels.
-- [ ] **Geschützte Admin-Endpunkte**: Nutzerliste, Bannen/Entbannen, MFA-Reset,
-      Restaurant-Verwaltung, Bewertungs-Moderation.
-
-### Sonstiges
-- [ ] **Konto löschen** serverseitig umsetzen.
-- [ ] Optional: Bestellverlauf, Treuepunkte usw. an die Datenbank koppeln.
+## 🔭 Noch offen / optional
+- Checkout + Registrierungsformular vollständig übersetzen.
+- Echte Bezahlung über einen Zahlungsanbieter (aktuell simuliert).
+- Bewertungen bearbeiten/löschen auch für Nutzer (Admin kann bereits moderieren).
