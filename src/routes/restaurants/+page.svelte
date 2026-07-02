@@ -230,7 +230,7 @@
     color: inherit;
     position: relative;
     overflow: hidden;
-    --textbox-h: 128px; /* zentrale Stellschraube für Höhe des Textbereichs */
+    --textbox-h: 90px; /* zentrale Stellschraube für Höhe des Textbereichs */
   }
 
   /* ─── Emoji Bild (zentriert im Bereich ÜBER der Textbox) ─────────── */
