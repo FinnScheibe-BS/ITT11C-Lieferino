@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/smtp"
 	"os"
@@ -45,6 +46,7 @@ func sendeMail(an, betreff, text string) (bool, error) {
 		user, an, betreff, text,
 	))
 	if err := smtp.SendMail("smtp.gmail.com:587", auth, user, []string{an}, nachricht); err != nil {
+		log.Printf("❌ E-Mail-Versand an %s fehlgeschlagen: %v", an, err)
 		return false, err
 	}
 	return true, nil

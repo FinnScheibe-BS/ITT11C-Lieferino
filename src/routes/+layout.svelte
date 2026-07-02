@@ -8,7 +8,6 @@
   import { eingeloggt, logout } from '$lib/stores/auth.js';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
   import Drachenlord from '$lib/Drachenlord.svelte';
   import FunOverlay from '$lib/FunOverlay.svelte';
 
@@ -64,14 +63,7 @@
   }
 
   onMount(() => {
-    // Libre Caslon von Google Fonts laden
-    if (browser) {
-      const link = document.createElement('link');
-      link.href = 'https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap';
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
-    }
-
+    // (Libre Caslon wird jetzt direkt in app.html geladen -> kein Umspringen.)
     const unsub = warenkorb.subscribe(v => anzahl = v?.length ?? 0);
     tickInterval = setInterval(tick, TICK_DAUER_MS);
     window.addEventListener('keydown', konamiTaste);
@@ -458,6 +450,7 @@
   :global(html[data-theme='light'] h1) { color: #1a0f00; }
   :global(html[data-theme='light'] h2) { color: #7a5000; }
   :global(html[data-theme='light'] h3) { color: #7a5000; }
+  :global(html[data-theme='light'] h4) { color: #7a5000; }
 
   /* ─── Fetter Text nutzt auch Geist ─────────────────────────────────── */
   :global(strong), :global(b), :global(.font-bold) {
@@ -468,6 +461,9 @@
   /* ─── Links ─────────────────────────────────────────────────────────── */
   :global(a) { color: #f9c932; text-decoration: none; transition: color 0.15s; }
   :global(a:hover) { color: #fff; }
+  /* Light-Mode: dunkleres Gold, damit Links lesbar sind (helles Gelb auf Weiß = kaum sichtbar) */
+  :global(html[data-theme='light'] a) { color: #9a6600; }
+  :global(html[data-theme='light'] a:hover) { color: #7a5000; }
 
   /* ─── Seiteninhalt ──────────────────────────────────────────────────── */
   .page-content {

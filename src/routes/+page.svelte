@@ -7,14 +7,13 @@
   import AuthVollenden from '$lib/AuthVollenden.svelte';
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
   import { bewertungsSchnitt } from '$lib/stores/bewertungsSchnitt.js';
-  import { eingeloggt, login, hatKonto } from '$lib/stores/auth.js';
+  import { eingeloggt, login } from '$lib/stores/auth.js';
   import { t } from '$lib/i18n.js';
   import { drachenlordAusloesen } from '$lib/stores/easteregg.js';
   import { konfetti, eierToast } from '$lib/confetti.js';
   import { toggleEmojiCursor, toggleSaison } from '$lib/stores/funmodus.js';
   import { geheimFreischalten } from '$lib/stores/lieferanten.js';
 
-  let kontoVorhanden = $state(false);
   let loginSchritt = $state(1);
   let emailInput = $state("");
   let passwortInput = $state("");
@@ -73,7 +72,6 @@
   });
 
   onMount(() => {
-    kontoVorhanden = hatKonto();
     const gespeichert = localStorage.getItem('lieferino_user');
     if (gespeichert) {
       const user = JSON.parse(gespeichert);
@@ -213,21 +211,8 @@
   );
 </script>
 
-<!-- ░░░ NICHT EINGELOGGT: Konto vorhanden ░░░ -->
-{#if !$eingeloggt && kontoVorhanden}
-  <div class="auth-wrapper">
-    <div class="auth-card">
-      <div class="auth-hero">
-        <span class="auth-hero-icon">👋</span>
-        <h2>Willkommen zurück!</h2>
-        <p>Du hast bereits ein Konto. Melde dich an.</p>
-      </div>
-      <a href="/login" class="gold-btn block-btn">Zum Login 🔑</a>
-    </div>
-  </div>
-
-<!-- ░░░ NICHT EINGELOGGT: Registrierung ░░░ -->
-{:else if !$eingeloggt}
+<!-- ░░░ NICHT EINGELOGGT: Registrierung (immer möglich) ░░░ -->
+{#if !$eingeloggt}
   <div class="auth-wrapper">
     <div class="auth-card">
 
@@ -494,6 +479,17 @@
     --text: #f5f0e8;
     --text-muted: rgba(245, 240, 232, 0.55);
     --card-r: 18px;
+  }
+
+  /* ☀️ Light-Mode: dunklere Töne, damit Texte auf hellem Grund lesbar sind. */
+  :global(html[data-theme='light']) {
+    --gold-text: #9a6600;
+    --surface: rgba(255, 252, 235, 0.75);
+    --surface-hover: rgba(255, 250, 230, 0.92);
+    --border: rgba(230, 168, 0, 0.35);
+    --border-hover: rgba(230, 168, 0, 0.65);
+    --text: #1a1200;
+    --text-muted: rgba(60, 45, 10, 0.72);
   }
 
   /* ══════════════════════════════════════════════════════════════
