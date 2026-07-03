@@ -4,16 +4,11 @@
   import 'geist-svelte/font/mono';
   import { warenkorb } from '$lib/stores/cart.js';
   import { theme, themeWechseln } from '$lib/stores/theme.js';
-  import { t, sprache, setzeSprache, SPRACHEN } from '$lib/i18n.js';
+  import { t, sprache, setzeSprache, SPRACHEN } from '$lib/utils/i18n.js';
   import { eingeloggt, logout } from '$lib/stores/auth.js';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import Drachenlord from '$lib/Drachenlord.svelte';
-  import FunOverlay from '$lib/FunOverlay.svelte';
-
-  import jumpscareGif from '../sets/44b67d5e479d46f672031fb9ee0229cf.gif';
-  import jumpscareSound from '../sets/myinstants.mp3';
 
   let anzahl = $state(0);
   let warenkorbSumme = $state(0);
@@ -21,42 +16,7 @@
   // Prüfen, ob wir auf der Homepage sind
   let istHomepage = $derived($page.route.id === '/' || $page.url.pathname === '/');
 
-  const TICK_DAUER_MS = 1000;
-  const CHANCE = 10000;
-
-  let zeigeJumpscare = $state(false);
   let menuOffen = $state(false);
-  let tickInterval;
-  let audioElement;
-
-  function tick() {
-    const wuerfel = Math.floor(Math.random() * CHANCE);
-    if (wuerfel === 0) loeseJumpscareAus();
-  }
-
-  function loeseJumpscareAus() {
-    zeigeJumpscare = true;
-    if (audioElement) {
-      audioElement.currentTime = 0;
-      audioElement.play().catch(() => {});
-    }
-    setTimeout(() => { zeigeJumpscare = false; }, 4000);
-  }
-
-  const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-  let konamiFortschritt = 0;
-  function konamiTaste(e) {
-    const taste = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (taste === KONAMI[konamiFortschritt]) {
-      konamiFortschritt += 1;
-      if (konamiFortschritt === KONAMI.length) {
-        konamiFortschritt = 0;
-        loeseJumpscareAus();
-      }
-    } else {
-      konamiFortschritt = taste === KONAMI[0] ? 1 : 0;
-    }
-  }
 
   function menuSchliessen() { menuOffen = false; }
 
@@ -79,27 +39,11 @@
       anzahl = v?.length ?? 0;
       berechneSumme();
     });
-    tickInterval = setInterval(tick, TICK_DAUER_MS);
-    window.addEventListener('keydown', konamiTaste);
     return () => {
       unsub();
-      clearInterval(tickInterval);
-      window.removeEventListener('keydown', konamiTaste);
     };
   });
 </script>
-
-<!-- Easter Eggs -->
-<Drachenlord />
-<FunOverlay />
-
-<!-- Jumpscare Overlay -->
-{#if zeigeJumpscare}
-  <div class="jumpscare-overlay">
-    <img src={jumpscareGif} alt="" class="jumpscare-gif" />
-  </div>
-{/if}
-<audio bind:this={audioElement} src={jumpscareSound} preload="auto"></audio>
 
 <!-- ░░░ NAVIGATION ░░░ -->
 
@@ -588,18 +532,6 @@
     max-width: 1200px;
     margin: 0 auto;
   }
-
-  /* ─── JUMPSCARE ─────────────────────────────────────────────────────── */
-  .jumpscare-overlay {
-    position: fixed;
-    inset: 0;
-    background: #000;
-    z-index: 999999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .jumpscare-gif { width: 100%; height: 100%; object-fit: cover; }
 
   /* ─── Nav Backdrop ──────────────────────────────────────────────────── */
   .nav-backdrop {
