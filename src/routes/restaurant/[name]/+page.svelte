@@ -82,13 +82,12 @@
   let bewertungFehler = $state('');
   async function bewertungAbschicken(e) {
     e.preventDefault();
-<<<<<<< HEAD
+
     if (!hatHierBestellt) return;
     if (neuName.trim() === '' || neuText.trim() === '') return;
 
     bewertungHinzufuegen(slug, { name: neuName, sterne: neuSterne, text: neuText });
 
-=======
     if (neuName.trim() === '' || neuText.trim() === '') return;
     bewertungFehler = '';
 
@@ -100,7 +99,6 @@
       return;
     }
     // Felder zurücksetzen
->>>>>>> a9ef3c9b025c8f030a8d077c2da01ea558e1105c
     neuName = '';
     neuText = '';
     neuSterne = 5;
@@ -320,7 +318,6 @@
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
   }
 
-<<<<<<< HEAD
   .bewertung-link {
     color: #f9c932;
     text-decoration: underline;
@@ -602,7 +599,6 @@
     }
   }
 </style>
-=======
   .bewertung-link { color: inherit; text-decoration: underline; text-decoration-style: dotted; cursor: pointer; }
   .review-sperre { background: #f7f7f7; border: 1px solid #eee; border-radius: 12px; padding: 14px; color: #777; }
   .review-fehler { color: #dc3545; font-weight: 600; font-size: 0.85rem; margin: 0; }
@@ -612,4 +608,3 @@
   .review-kopf { display: flex; justify-content: space-between; margin-bottom: 6px; }
   .review p { margin: 0; color: #555; }
 </style>
->>>>>>> a9ef3c9b025c8f030a8d077c2da01ea558e1105c
