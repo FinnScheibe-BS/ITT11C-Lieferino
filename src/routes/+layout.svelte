@@ -8,6 +8,7 @@
   import { eingeloggt, logout } from '$lib/stores/auth.js';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
   import Drachenlord from '$lib/Drachenlord.svelte';
   import FunOverlay from '$lib/FunOverlay.svelte';
 
@@ -15,6 +16,10 @@
   import jumpscareSound from '../sets/myinstants.mp3';
 
   let anzahl = $state(0);
+  let warenkorbSumme = $state(0);
+  
+  // Prüfen, ob wir auf der Homepage sind
+  let istHomepage = $derived($page.route.id === '/' || $page.url.pathname === '/');
 
   const TICK_DAUER_MS = 1000;
   const CHANCE = 10000;
@@ -55,16 +60,25 @@
 
   function menuSchliessen() { menuOffen = false; }
 
-  // 🔓 Logout: beendet die Session (Konto bleibt) und geht zur Startseite.
   function ausloggen() {
     logout();
     menuSchliessen();
     goto('/');
   }
 
+  function berechneSumme() {
+    if ($warenkorb && Array.isArray($warenkorb)) {
+      warenkorbSumme = $warenkorb.reduce((sum, item) => sum + (item.preis ?? 0), 0);
+    } else {
+      warenkorbSumme = 0;
+    }
+  }
+
   onMount(() => {
-    // (Libre Caslon wird jetzt direkt in app.html geladen -> kein Umspringen.)
-    const unsub = warenkorb.subscribe(v => anzahl = v?.length ?? 0);
+    const unsub = warenkorb.subscribe(v => {
+      anzahl = v?.length ?? 0;
+      berechneSumme();
+    });
     tickInterval = setInterval(tick, TICK_DAUER_MS);
     window.addEventListener('keydown', konamiTaste);
     return () => {
@@ -196,6 +210,113 @@
   {$theme === 'dark' ? '☀️' : '🌙'}
 </button>
 
+<!-- ░░░ HERO BANNER (nur auf Homepage) ░░░ -->
+{#if istHomepage}
+  <section class="hero-banner">
+    <div class="hero-bg-effects">
+      <div class="hero-glow hero-glow-1"></div>
+      <div class="hero-glow hero-glow-2"></div>
+      <div class="hero-glow hero-glow-3"></div>
+      <div class="hero-grid"></div>
+    </div>
+    
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-icon">✨</span>
+        <span>Premium Food Delivery</span>
+      </div>
+      
+      <h1 class="hero-title">
+        <span class="title-line">Dein Geschmack.</span>
+        <span class="title-line title-gold">Unsere Leidenschaft.</span>
+      </h1>
+      
+      <p class="hero-subtitle">
+        Entdecke exklusive Restaurants und lass dir 
+        <span class="highlight">kulinarische Meisterwerke</span> direkt vor die Tür bringen.
+      </p>
+      
+      <div class="hero-features">
+        <div class="feature-item">
+          <span class="feature-icon">🚀</span>
+          <span>Schnelle Lieferung</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">⭐</span>
+          <span>Premium Qualität</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🔒</span>
+          <span>Sichere Zahlung</span>
+        </div>
+      </div>
+      
+      <div class="hero-actions">
+        <a href="/restaurants" class="hero-btn hero-btn-primary">
+          <span>Restaurants entdecken</span>
+          <span class="btn-arrow">→</span>
+        </a>
+        <a href="/bestellungen" class="hero-btn hero-btn-secondary">
+          <span>Bestellungen ansehen</span>
+        </a>
+      </div>
+      
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-value">500+</span>
+          <span class="stat-label">Restaurants</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-value">30min</span>
+          <span class="stat-label">Ø Lieferzeit</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-value">10k+</span>
+          <span class="stat-label">Kunden</span>
+        </div>
+      </div>
+
+      <!-- ░░░ WARENKORB BOX ░░░ -->
+      <a href="/cart" class="hero-cart-box">
+        <div class="cart-box-icon">
+          <span class="cart-icon">🛒</span>
+          {#if anzahl > 0}
+            <span class="cart-count">{anzahl}</span>
+          {/if}
+        </div>
+        <div class="cart-box-info">
+          <span class="cart-label">Dein Warenkorb</span>
+          <span class="cart-total">{warenkorbSumme.toFixed(2)} €</span>
+        </div>
+        <span class="cart-arrow">→</span>
+      </a>
+    </div>
+    
+    <div class="hero-decorative">
+      <div class="food-floating food-1">🍕</div>
+      <div class="food-floating food-2">🍔</div>
+      <div class="food-floating food-3">🍣</div>
+      <div class="food-floating food-4">🥗</div>
+      <div class="food-floating food-5">🍰</div>
+    </div>
+
+    <!-- Weicher Fade-Out am Ende -->
+    <div class="hero-fade-out"></div>
+    
+    <div class="hero-scroll-indicator">
+      <span>Scrollen</span>
+      <div class="scroll-arrow">↓</div>
+    </div>
+  </section>
+{:else}
+  <!-- Einfacher Header auf allen anderen Seiten -->
+  <section class="simple-header">
+    <h1>Willkommen bei Lieferino</h1>
+  </section>
+{/if}
+
 <!-- Seiteninhalt -->
 <div class="page-content">
   <slot />
@@ -219,12 +340,11 @@
   }
 
   /* ─── Globale Basis ─────────────────────────────────────────────────── */
-  :global(*, *::before, *::after) { box-sizing: border-box; margin: 0; padding: 0; }
+  :global(*, _::before,_ ::after) { box-sizing: border-box; margin: 0; padding: 0; }
 
   :global(html) {
     background: #0d0d0d;
     color: #f5f0e8;
-    /* ─── NEU: Libre Caslon für normalen Text ─── */
     font-family: 'Libre Caslon Text', Georgia, serif;
     -webkit-font-smoothing: antialiased;
   }
@@ -249,7 +369,6 @@
 
   /* ─── Apple-Kacheln (global, damit alle Seiten profitieren) ─────────── */
 
-  /* Jede Kachel: volles Bild als Hintergrund, Blur-Streifen am unteren Rand */
   :global(.kachel),
   :global(.restaurant-card),
   :global(.netflix-card) {
@@ -275,7 +394,6 @@
       0 0 24px rgba(230,168,0,0.15) !important;
   }
 
-  /* Bild füllt die ganze Kachel */
   :global(.kachel img),
   :global(.restaurant-card img),
   :global(.netflix-card img),
@@ -293,7 +411,6 @@
     background: linear-gradient(135deg, #2a1f00, #1a1200) !important;
   }
 
-  /* Blur-Streifen unten: das Apple-Musik-Muster */
   :global(.kachel::after),
   :global(.restaurant-card::after),
   :global(.netflix-card::after) {
@@ -317,7 +434,6 @@
     pointer-events: none;
   }
 
-  /* Text liegt auf dem Blur-Streifen */
   :global(.kachel .kachel-info),
   :global(.restaurant-card .card-info),
   :global(.netflix-card .card-info),
@@ -398,7 +514,6 @@
     cursor: pointer !important;
     box-shadow: 0 2px 12px rgba(230,168,0,0.35) !important;
     transition: opacity 0.15s, transform 0.15s !important;
-    /* ─── NEU: Geist für Buttons ─── */
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif !important;
   }
 
@@ -420,7 +535,6 @@
     font-size: 0.9rem !important;
     outline: none !important;
     transition: border-color 0.18s !important;
-    /* ─── NEU: Geist für Inputs ─── */
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif !important;
   }
 
@@ -437,14 +551,14 @@
     background: rgba(255, 250, 235, 0.85) !important;
     color: #1a1200 !important;
   }
-  /* Platzhalter im Light-Mode gut lesbar (aber klar als Platzhalter erkennbar) */
+
   :global(html[data-theme='light'] input::placeholder),
   :global(html[data-theme='light'] textarea::placeholder) {
     color: rgba(26, 18, 0, 0.45) !important;
   }
 
-  /* ─── Überschriften ─── NEU: Geist für Headlines ────────────────────── */
-  :global(h1), :global(h2), :global(h3), :global(h4) { 
+  /* ─── Überschriften ─────────────────────────────────────────────────── */
+  :global(h1), :global(h2), :global(h3), :global(h4) {
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif !important;
   }
   :global(h1) { font-size: clamp(1.8rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.03em; color: #fff; }
@@ -457,7 +571,6 @@
   :global(html[data-theme='light'] h3) { color: #7a5000; }
   :global(html[data-theme='light'] h4) { color: #7a5000; }
 
-  /* ─── Fetter Text nutzt auch Geist ─────────────────────────────────── */
   :global(strong), :global(b), :global(.font-bold) {
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif !important;
     font-weight: 700;
@@ -466,7 +579,6 @@
   /* ─── Links ─────────────────────────────────────────────────────────── */
   :global(a) { color: #f9c932; text-decoration: none; transition: color 0.15s; }
   :global(a:hover) { color: #fff; }
-  /* Light-Mode: dunkleres Gold, damit Links lesbar sind (helles Gelb auf Weiß = kaum sichtbar) */
   :global(html[data-theme='light'] a) { color: #9a6600; }
   :global(html[data-theme='light'] a:hover) { color: #7a5000; }
 
@@ -477,7 +589,7 @@
     margin: 0 auto;
   }
 
-  /* ─── Jumpscare ─────────────────────────────────────────────────────── */
+  /* ─── JUMPSCARE ─────────────────────────────────────────────────────── */
   .jumpscare-overlay {
     position: fixed;
     inset: 0;
@@ -521,7 +633,6 @@
     cursor: pointer;
     padding: 0 !important;
     transition: var(--transition) !important;
-    /* ─── NEU: Geist für Burger ─── */
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif !important;
   }
 
@@ -563,7 +674,6 @@
     padding: 2px 5px;
     border-radius: 8px;
     line-height: 1;
-    /* ─── NEU: Geist für Badge ─── */
     font-family: 'Geist Sans', -apple-system, sans-serif !important;
   }
 
@@ -595,7 +705,6 @@
     padding: 80px 0 32px;
   }
 
-  /* Drawer Logo */
   .drawer-logo {
     display: flex;
     align-items: center;
@@ -622,11 +731,9 @@
     font-weight: 700;
     color: #f9c932;
     letter-spacing: -0.02em;
-    /* ─── NEU: Geist für Logo ─── */
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif !important;
   }
 
-  /* Nav Links */
   .nav-links {
     display: flex;
     flex-direction: column;
@@ -647,7 +754,6 @@
     text-decoration: none;
     transition: background 0.18s, color 0.18s;
     margin-bottom: 2px;
-    /* ─── NEU: Geist für Nav Links ─── */
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif !important;
   }
 
@@ -674,11 +780,9 @@
     padding: 2px 8px;
     border-radius: 10px;
     line-height: 1.4;
-    /* ─── NEU: Geist für Cart Badge ─── */
     font-family: 'Geist Sans', -apple-system, sans-serif !important;
   }
 
-  /* Sprache */
   .sprach-block {
     display: flex;
     align-items: center;
@@ -706,11 +810,9 @@
     padding: 7px 10px !important;
     font-size: 0.85rem !important;
     cursor: pointer;
-    /* ─── NEU: Geist für Select ─── */
     font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif !important;
   }
 
-  /* Impressum */
   .drawer-impressum {
     padding: 16px 20px;
     border-top: 1px solid rgba(230, 168, 0, 0.10);
@@ -778,5 +880,675 @@
   }
   :global(::-webkit-scrollbar-thumb:hover) {
     background: rgba(230, 168, 0, 0.55);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     ─── HERO BANNER STYLES ─────────────────────────────────────────────
+     ════════════════════════════════════════════════════════════════════ */
+
+  .hero-banner {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    padding: 120px 24px 80px;
+  }
+
+  /* Hintergrund-Effekte */
+  .hero-bg-effects {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .hero-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.5;
+    animation: glow-pulse 8s ease-in-out infinite;
+  }
+
+  .hero-glow-1 {
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(230,168,0,0.4) 0%, transparent 70%);
+    top: -200px;
+    left: -100px;
+    animation-delay: 0s;
+  }
+
+  .hero-glow-2 {
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(184,124,0,0.3) 0%, transparent 70%);
+    bottom: -150px;
+    right: -100px;
+    animation-delay: 2s;
+  }
+
+  .hero-glow-3 {
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(249,201,50,0.25) 0%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation-delay: 4s;
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(230,168,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,168,0,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.1); }
+  }
+
+  /* Haupt-Inhalt */
+  .hero-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    max-width: 900px;
+    animation: fade-in-up 1s ease-out;
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Badge */
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    background: rgba(230,168,0,0.12);
+    border: 1px solid rgba(230,168,0,0.35);
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f9c932;
+    margin-bottom: 24px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+  }
+
+  :global(html[data-theme='light']) .hero-badge {
+    background: rgba(230,168,0,0.18);
+    color: #7a5000;
+    border-color: rgba(122,80,0,0.35);
+  }
+
+  .badge-icon {
+    animation: sparkle 2s ease-in-out infinite;
+  }
+
+  @keyframes sparkle {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.2) rotate(10deg); }
+  }
+
+  /* Titel */
+  .hero-title {
+    font-size: clamp(2.5rem, 8vw, 5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+    margin-bottom: 20px;
+    font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+  }
+
+  .title-line {
+    display: block;
+  }
+
+  .title-gold {
+    background: linear-gradient(135deg, #f9c932 0%, #e6a800 50%, #fde8a0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  :global(html[data-theme='light']) .title-gold {
+    background: linear-gradient(135deg, #7a5000 0%, #b87c00 50%, #e6a800 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Untertitel */
+  .hero-subtitle {
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    color: rgba(245,240,232,0.85);
+    line-height: 1.6;
+    margin-bottom: 32px;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: 'Libre Caslon Text', Georgia, serif;
+  }
+
+  :global(html[data-theme='light']) .hero-subtitle {
+    color: rgba(26,18,0,0.75);
+  }
+
+  .hero-subtitle .highlight {
+    color: #f9c932;
+    font-weight: 600;
+  }
+
+  :global(html[data-theme='light']) .hero-subtitle .highlight {
+    color: #b87c00;
+  }
+
+  /* Features */
+  .hero-features {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: rgba(255,248,220,0.06);
+    border: 1px solid rgba(230,168,0,0.25);
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #f5f0e8;
+    font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+    transition: all var(--transition);
+  }
+
+  :global(html[data-theme='light']) .feature-item {
+    background: rgba(255,252,235,0.7);
+    border-color: rgba(230,168,0,0.35);
+    color: #1a1200;
+  }
+
+  .feature-item:hover {
+    background: rgba(230,168,0,0.15);
+    border-color: rgba(230,168,0,0.5);
+    transform: translateY(-2px);
+  }
+
+  .feature-icon {
+    font-size: 1.2rem;
+  }
+
+  /* Actions / Buttons */
+  .hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+  }
+
+  .hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 32px;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all var(--transition);
+    font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+    cursor: pointer;
+  }
+
+  .hero-btn-primary {
+    background: linear-gradient(135deg, #e6a800 0%, #b87c00 100%);
+    color: #1a0f00;
+    box-shadow: 0 4px 24px rgba(230,168,0,0.4);
+  }
+
+  .hero-btn-primary:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 32px rgba(230,168,0,0.55);
+  }
+
+  .hero-btn-secondary {
+    background: rgba(255,248,220,0.08);
+    color: #f9c932;
+    border: 1px solid rgba(230,168,0,0.35);
+  }
+
+  :global(html[data-theme='light']) .hero-btn-secondary {
+    background: rgba(255,252,235,0.7);
+    color: #7a5000;
+    border-color: rgba(122,80,0,0.35);
+  }
+
+  .hero-btn-secondary:hover {
+    background: rgba(230,168,0,0.15);
+    border-color: rgba(230,168,0,0.5);
+    transform: translateY(-3px);
+  }
+
+  .btn-arrow {
+    transition: transform var(--transition);
+  }
+
+  .hero-btn-primary:hover .btn-arrow {
+    transform: translateX(4px);
+  }
+
+  /* Stats */
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    padding: 24px 32px;
+    background: rgba(255,248,220,0.04);
+    border: 1px solid rgba(230,168,0,0.2);
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    max-width: 500px;
+    margin: 0 auto 32px;
+  }
+
+  :global(html[data-theme='light']) .hero-stats {
+    background: rgba(255,252,235,0.6);
+    border-color: rgba(230,168,0,0.3);
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 16px;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #f9c932;
+    font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+  }
+
+  :global(html[data-theme='light']) .stat-value {
+    color: #7a5000;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    color: rgba(245,240,232,0.6);
+    margin-top: 4px;
+    font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+  }
+
+  :global(html[data-theme='light']) .stat-label {
+    color: rgba(26,18,0,0.5);
+  }
+
+  .stat-divider {
+    width: 1px;
+    height: 40px;
+    background: rgba(230,168,0,0.3);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     ─── WARENKORB BOX ──────────────────────────────────────────────────
+     ════════════════════════════════════════════════════════════════════ */
+
+  .hero-cart-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 24px;
+    background: rgba(255,248,220,0.08);
+    border: 1px solid rgba(230,168,0,0.35);
+    border-radius: 16px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    text-decoration: none;
+    transition: all var(--transition);
+    animation: fade-in-up 1s ease-out 0.3s both;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-cart-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(230,168,0,0.1) 0%, transparent 50%, rgba(230,168,0,0.1) 100%);
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .hero-cart-box:hover::before {
+    opacity: 1;
+  }
+
+  .hero-cart-box:hover {
+    background: rgba(230,168,0,0.15);
+    border-color: rgba(230,168,0,0.6);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px rgba(230,168,0,0.25);
+  }
+
+  :global(html[data-theme='light']) .hero-cart-box {
+    background: rgba(255,252,235,0.7);
+    border-color: rgba(122,80,0,0.35);
+  }
+
+  :global(html[data-theme='light']) .hero-cart-box:hover {
+    background: rgba(230,168,0,0.12);
+    border-color: rgba(122,80,0,0.5);
+  }
+
+  .cart-box-icon {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #e6a800, #b87c00);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(230,168,0,0.35);
+    flex-shrink: 0;
+  }
+
+  .cart-icon {
+    font-size: 1.4rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  }
+
+  .cart-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #fff;
+    color: #1a0f00;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-family: 'Geist Sans', -apple-system, sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .cart-box-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    z-index: 1;
+  }
+
+  .cart-label {
+    font-size: 0.75rem;
+    color: rgba(245,240,232,0.6);
+    font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  :global(html[data-theme='light']) .cart-label {
+    color: rgba(26,18,0,0.5);
+  }
+
+  .cart-total {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f9c932;
+    font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  :global(html[data-theme='light']) .cart-total {
+    color: #7a5000;
+  }
+
+  .cart-arrow {
+    font-size: 1.2rem;
+    color: #f9c932;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: all var(--transition);
+    margin-left: 8px;
+  }
+
+  :global(html[data-theme='light']) .cart-arrow {
+    color: #b87c00;
+  }
+
+  .hero-cart-box:hover .cart-arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Leerzustand wenn Warenkorb leer */
+  .hero-cart-box.empty {
+    opacity: 0.7;
+  }
+
+  .hero-cart-box.empty:hover {
+    opacity: 1;
+  }
+
+  /* Dekorativ schwebende Elemente */
+  .hero-decorative {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 5;
+  }
+
+  .food-floating {
+    position: absolute;
+    font-size: 3rem;
+    opacity: 0.15;
+    animation: float 6s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(230,168,0,0.3));
+  }
+
+  :global(html[data-theme='light']) .food-floating {
+    opacity: 0.08;
+  }
+
+  .food-1 { top: 15%; left: 10%; animation-delay: 0s; }
+  .food-2 { top: 25%; right: 15%; animation-delay: 1s; }
+  .food-3 { bottom: 30%; left: 12%; animation-delay: 2s; }
+  .food-4 { bottom: 20%; right: 10%; animation-delay: 3s; }
+  .food-5 { top: 50%; left: 5%; animation-delay: 4s; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(5deg); }
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     ─── FADE-OUT AM ENDE DES HERO ──────────────────────────────────────
+     ════════════════════════════════════════════════════════════════════ */
+
+  .hero-fade-out {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 180px;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 20%,
+      #0d0d0d 100%
+    );
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  :global(html[data-theme='light']) .hero-fade-out {
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 20%,
+      #faf6ee 100%
+    );
+  }
+
+  /* Scroll Indicator */
+  .hero-scroll-indicator {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: rgba(245,240,232,0.5);
+    font-size: 0.8rem;
+    font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+    animation: bounce 2s ease-in-out infinite;
+    z-index: 25;
+  }
+
+  :global(html[data-theme='light']) .hero-scroll-indicator {
+    color: rgba(26,18,0,0.4);
+  }
+
+  .scroll-arrow {
+    font-size: 1.2rem;
+    color: #f9c932;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(8px); }
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     ─── SIMPLE HEADER (für alle anderen Seiten) ────────────────────────
+     ════════════════════════════════════════════════════════════════════ */
+
+  .simple-header {
+    padding: 100px 24px 40px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(230,168,0,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(184,124,0,0.08) 0%, transparent 55%);
+  }
+
+  .simple-header h1 {
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #f9c932 0%, #e6a800 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  :global(html[data-theme='light']) .simple-header {
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(230,168,0,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(184,124,0,0.05) 0%, transparent 55%);
+  }
+
+  :global(html[data-theme='light']) .simple-header h1 {
+    background: linear-gradient(135deg, #7a5000 0%, #b87c00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Responsive Anpassungen */
+  @media (max-width: 768px) {
+    .hero-banner {
+      padding: 100px 16px 60px;
+    }
+
+    .hero-features {
+      gap: 12px;
+    }
+
+    .feature-item {
+      padding: 10px 16px;
+      font-size: 0.85rem;
+    }
+
+    .hero-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hero-btn {
+      width: 100%;
+      max-width: 280px;
+      justify-content: center;
+    }
+
+    .hero-stats {
+      flex-direction: column;
+      gap: 16px;
+      padding: 20px;
+    }
+
+    .stat-divider {
+      width: 40px;
+      height: 1px;
+    }
+
+    .food-floating {
+      font-size: 2rem;
+    }
+
+    /* Warenkorb Box Mobile */
+    .hero-cart-box {
+      width: 100%;
+      max-width: 320px;
+      justify-content: center;
+      padding: 12px 18px;
+    }
+
+    .cart-box-info {
+      align-items: center;
+      text-align: center;
+    }
+
+    .hero-fade-out {
+      height: 120px;
+    }
+
+    .simple-header {
+      padding: 80px 16px 30px;
+    }
   }
 </style>
