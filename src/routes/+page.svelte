@@ -1,31 +1,27 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { warenkorb } from '$lib/stores/cart.js';
   import { pruefePasswortStaerke } from '$lib/services/passwort.js';
   import { pruefeAdresse } from '$lib/services/adresse.js';
-  import { api } from '$lib/api.js';
-  import AuthVollenden from '$lib/AuthVollenden.svelte';
+  import { api } from '$lib/api/api.js';
+  import AuthVollenden from '$lib/components/auth/AuthVollenden.svelte';
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
   import { bewertungsSchnitt } from '$lib/stores/bewertungsSchnitt.js';
   import { eingeloggt, login } from '$lib/stores/auth.js';
-  import { t } from '$lib/i18n.js';
-  import { drachenlordAusloesen } from '$lib/stores/easteregg.js';
-  import { konfetti, eierToast } from '$lib/confetti.js';
-  import { toggleEmojiCursor, toggleSaison } from '$lib/stores/funmodus.js';
-  import { geheimFreischalten } from '$lib/stores/lieferanten.js';
+  import { t } from '$lib/utils/i18n.js';
 
   let loginSchritt = $state(1);
   let emailInput = $state("");
   let passwortInput = $state("");
   let passwortStaerke = $derived(pruefePasswortStaerke(passwortInput));
-  let zeigeAbschluss = $state(false); // true -> E-Mail-Code + MFA-Einrichtung (AuthVollenden)
+  let zeigeAbschluss = $state(false);
   let prueftAdresse = $state(false);
   let adressFehler = $state("");
   let registrierFehler = $state("");
   let registrierAnforderungen = $state([]);
-  let emailFehler = $state("");        // "E-Mail existiert schon" (Schritt 1)
+  let emailFehler = $state("");
   let prueftEmail = $state(false);
-  let agbAkzeptiert = $state(false);   // Pflicht-Häkchen AGB + Datenschutz
+  let agbAkzeptiert = $state(false);
   let usernameInput = $state("");
   let vornameInput = $state("");
   let nachnameInput = $state("");
@@ -44,50 +40,6 @@
   let hausnummerInput = $state("");
   let plzInput = $state("");
   let ortInput = $state("");
-  let heroKlicks = $state(0);
-
-  function heroKlick() {
-    heroKlicks += 1;
-    if (heroKlicks === 10) {
-      heroKlicks = 0;
-      konfetti({ anzahl: 100, dauer: 2500, emojis: ['🍕','🍔','🌮','🍣','🎉'] });
-      eierToast('🥚 Easter Egg gefunden! Du klickst gerne, was? 😄');
-    }
-  }
-
-  $effect(() => {
-    const s = suche.toLowerCase().replace(/\s/g, '');
-    if (s === 'drachenlord') {
-      drachenlordAusloesen();
-    } else if (s === 'pizzapizzapizza') {
-      konfetti({ anzahl: 120, dauer: 3000, emojis: ['🍕'] });
-      eierToast('🍕 Geheimcode entdeckt! Nutze PIZZAPARTY für 25% Rabatt 🎉');
-    } else if (s === 'foodcursor') {
-      toggleEmojiCursor();
-      eierToast('🖱️ Emoji-Cursor umgeschaltet!');
-    } else if (s === 'schnee' || s === 'winter') {
-      toggleSaison();
-      eierToast('❄️ Saison-Effekt umgeschaltet!');
-    } else if (s === 'dragonpizza') {
-      geheimFreischalten();
-      eierToast('🐲 Geheimes Restaurant freigeschaltet! Schau in die Restaurant-Liste 🔥');
-    }
-  });
-
-  onMount(() => {
-    const gespeichert = localStorage.getItem('lieferino_user');
-    if (gespeichert) {
-      const user = JSON.parse(gespeichert);
-      if (user.geburtsdatum) {
-        const heute = new Date();
-        const geb = new Date(user.geburtsdatum);
-        if (heute.getDate() === geb.getDate() && heute.getMonth() === geb.getMonth()) {
-          konfetti({ anzahl: 150, dauer: 4000, emojis: ['🎂','🎈','🎉','🥳'] });
-          eierToast('🎂 Alles Gute zum Geburtstag! Code GEBURTSTAG = 20% Rabatt 🥳', 6000);
-        }
-      }
-    }
-  });
 
   // Schritt 1 -> 2: Passwort stark genug + E-Mail früh auf Eindeutigkeit prüfen.
   async function geheZuSchritt2(e) {
@@ -95,7 +47,6 @@
     if (!passwortStaerke.istSicher) return;
     if (emailInput.trim() === "" || passwortInput.trim() === "") return;
 
-    // 📧 Früh prüfen, ob die E-Mail schon vergeben ist.
     emailFehler = "";
     prueftEmail = true;
     const res = await api('/api/auth/email-check', { method: 'POST', body: { email: emailInput.trim() } });
@@ -104,7 +55,6 @@
       emailFehler = "Diese E-Mail ist bereits registriert. Bitte melde dich an. 📧";
       return;
     }
-    // (Backend offline -> trotzdem weiter; der Server lehnt sonst beim Anlegen ab.)
     registrierFehler = "";
     loginSchritt = 2;
   }
@@ -165,8 +115,6 @@
     };
     localStorage.setItem("lieferino_user", JSON.stringify(userDaten));
 
-    // 🗄️ Nutzer im Backend (Datenbank) anlegen. Es kommt KEIN Token zurück –
-    // das Konto ist erst nutzbar nach E-Mail-Bestätigung + MFA-Einrichtung.
     registrierFehler = "";
     registrierAnforderungen = [];
     const reg = await api('/api/auth/register', {
@@ -178,22 +126,17 @@
     });
 
     if (reg.ok && reg.daten?.needsVerification) {
-      // Backend hat einen Code per E-Mail geschickt -> Bestätigung + MFA einrichten.
       zeigeAbschluss = true;
       return;
     }
     if (reg.offline) {
-      // Backend nicht erreichbar -> App lokal weiternutzen (Daten bleiben lokal).
       login();
       return;
     }
-    // 🛡️ Server hat abgelehnt (E-Mail vergeben, Passwort, zu viele Anfragen) -> klar zeigen.
     registrierFehler = reg.daten?.fehler || "Registrierung fehlgeschlagen. Bitte später erneut versuchen.";
     registrierAnforderungen = reg.daten?.anforderungen || [];
   }
 
-  // E-Mail bestätigt + MFA eingerichtet -> volles Token liegt vor. Jetzt Adresse/Profil
-  // im Backend speichern und einloggen.
   async function abschlussFertig() {
     await api('/api/me', {
       method: 'PUT',
@@ -218,7 +161,6 @@
     })
   );
 
-  // Live-Sterne aus der DB (Durchschnitt aller Bewertungen), sonst statischer Wert.
   function schnittVon(r) {
     const s = $bewertungsSchnitt[r.slug];
     return s && s.anzahl > 0 ? s.schnitt : r.bewertung;
@@ -245,7 +187,6 @@
         </p>
       </div>
 
-      <!-- Schrittanzeige (nur während des Formulars) -->
       {#if !zeigeAbschluss}
         <div class="step-dots">
           <span class="dot" class:aktiv={loginSchritt >= 1}></span>
@@ -256,11 +197,8 @@
         </div>
       {/if}
 
-      <!-- ── Abschluss: E-Mail-Code bestätigen + MFA einrichten ── -->
       {#if zeigeAbschluss}
         <AuthVollenden start="verify" email={emailInput} onFertig={abschlussFertig} />
-
-      <!-- ── Schritt 1: E-Mail + Passwort ── -->
       {:else if loginSchritt === 1}
         <form onsubmit={geheZuSchritt2} class="auth-form">
           <div class="field">
@@ -292,8 +230,6 @@
           </button>
           <p class="auth-hint">Schon registriert? <a href="/login">Hier einloggen 🔑</a></p>
         </form>
-
-      <!-- ── Schritt 2: Persönliche Daten ── -->
       {:else if loginSchritt === 2}
         <form onsubmit={geheZuSchritt3} class="auth-form">
           <div class="field">
@@ -332,8 +268,6 @@
             <button type="submit" class="gold-btn flex1">Weiter zur Adresse 🏠</button>
           </div>
         </form>
-
-      <!-- ── Schritt 3: Adresse ── -->
       {:else if loginSchritt === 3}
         <form onsubmit={registrationAbschliessen} class="auth-form">
           <div class="addr-row">
@@ -368,7 +302,6 @@
             </div>
           {/if}
 
-          <!-- ✅ Pflicht: AGB + Datenschutz akzeptieren -->
           <label class="agb-check">
             <input type="checkbox" bind:checked={agbAkzeptiert} required />
             <span>Ich akzeptiere die
@@ -388,12 +321,10 @@
     </div>
   </div>
 
-<!-- ░░░ EINGELOGGT: Startseite ░░░ -->
 {:else}
   <div class="home">
 
-    <!-- ── Hero ── -->
-    <div class="hero" onclick={heroKlick} role="presentation">
+    <div class="hero">
       <div class="hero-glow"></div>
       <div class="hero-content">
         <p class="hero-eyebrow">🍕 Schnell. Frisch. Lecker.</p>
@@ -402,7 +333,6 @@
       </div>
     </div>
 
-    <!-- ── Suche + Filter ── -->
     <div class="controls">
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
@@ -434,7 +364,6 @@
       </div>
     </div>
 
-    <!-- ── Top 10 Scroll ── -->
     {#if gewaehlterTyp === "alle"}
       <div class="section-header">
         <h2>{$t('home.top10_title')}</h2>
@@ -449,7 +378,6 @@
               <span class="emoji-big">{restaurant.emoji}</span>
               <span class="star-badge">⭐ {schnittVon(restaurant).toFixed(1)}</span>
             </div>
-            <!-- Blur-Label: das Apple-Musik-Muster -->
             <div class="card-blur-label">
               <span class="card-name">{restaurant.name}</span>
               <span class="card-meta">{restaurant.beschreibung}</span>
@@ -463,7 +391,6 @@
       </div>
     {/if}
 
-    <!-- ── Alle Restaurants Grid ── -->
     <div class="section-header grid-section-header">
       <h2>{$t('home.discover')}</h2>
     </div>
@@ -475,7 +402,6 @@
             <span class="emoji-big">{restaurant.emoji}</span>
             <span class="star-badge">⭐ {schnittVon(restaurant).toFixed(1)}</span>
           </div>
-          <!-- Blur-Label -->
           <div class="card-blur-label">
             <span class="card-name">{restaurant.name}</span>
             <span class="card-meta">{restaurant.beschreibung}</span>
@@ -509,7 +435,6 @@
     --card-r: 18px;
   }
 
-  /* ☀️ Light-Mode: dunklere Töne, damit Texte auf hellem Grund lesbar sind. */
   :global(html[data-theme='light']) {
     --gold-text: #9a6600;
     --surface: rgba(255, 252, 235, 0.75);
@@ -543,7 +468,6 @@
     width: 100%;
   }
 
-  /* Auth Hero Banner — ersetzt den lila Block */
   .auth-hero {
     text-align: center;
     margin-bottom: 28px;
@@ -570,7 +494,6 @@
     margin: 0;
   }
 
-  /* Schritt-Punkte */
   .step-dots {
     display: flex;
     align-items: center;
@@ -603,7 +526,6 @@
     margin: 0 6px;
   }
 
-  /* Auth Form */
   .auth-form {
     display: flex;
     flex-direction: column;
@@ -642,7 +564,6 @@
     outline: none !important;
   }
 
-  /* Buttons */
   .gold-btn {
     background: linear-gradient(135deg, var(--g1), var(--g2)) !important;
     color: #1a0f00 !important;
@@ -698,7 +619,6 @@
   .narrow { width: 90px; min-width: 70px; }
   .input-plus { display: flex; gap: 6px; align-items: center; }
 
-  /* Passwort-Stärke */
   .pw-block { margin-top: 8px; }
   .pw-track { background: rgba(255,248,220,0.10); border-radius: 6px; height: 6px; overflow: hidden; }
   .pw-fill { height: 100%; border-radius: 6px; transition: width 0.3s, background 0.3s; }
@@ -710,7 +630,6 @@
   .pw-rules li.ok::before { content: "✓ "; color: #30d158; }
   :global(html[data-theme='light']) .pw-rules li { color: rgba(40, 28, 0, 0.75); }
 
-  /* Feedback */
   .err { color: #ff453a; font-size: 0.82rem; font-weight: 600; margin: 2px 0 0; }
   .err-box { background: rgba(255, 69, 58, 0.10); border: 1px solid rgba(255, 69, 58, 0.35); border-radius: 10px; padding: 10px 12px; margin: 4px 0; }
   .err-list { margin: 6px 0 0; padding-left: 18px; }
@@ -730,7 +649,6 @@
     padding-bottom: 60px;
   }
 
-  /* Hero */
   .hero {
     position: relative;
     overflow: hidden;
@@ -740,8 +658,6 @@
     background: linear-gradient(135deg, rgba(30,18,0,0.95) 0%, rgba(14,9,0,0.98) 100%);
     border: 1px solid rgba(230,168,0,0.22);
     box-shadow: 0 12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(230,168,0,0.15);
-    cursor: pointer;
-    user-select: none;
   }
 
   .hero-glow {
@@ -781,7 +697,6 @@
     line-height: 1.5;
   }
 
-  /* Suche + Filter */
   .controls {
     display: flex;
     flex-direction: column;
@@ -866,7 +781,6 @@
     border-radius: 0 !important;
   }
 
-  /* Abschnitt-Überschriften */
   .section-header {
     display: flex;
     flex-direction: column;
@@ -893,7 +807,6 @@
     border-top: 1px solid rgba(230,168,0,0.10);
   }
 
-  /* ── Horizontaler Scroll-Track (Top 10) ── */
   .scroll-track {
     display: flex;
     gap: 18px;
@@ -908,7 +821,6 @@
   .scroll-track::-webkit-scrollbar-track { background: transparent; }
   .scroll-track::-webkit-scrollbar-thumb { background: rgba(230,168,0,0.35); border-radius: 3px; }
 
-  /* ── Karten (Scroll + Grid) ── */
   .scroll-card,
   .grid-card {
     position: relative;
@@ -932,7 +844,6 @@
     box-shadow: 0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(230,168,0,0.45);
   }
 
-  /* Rang-Nummer (groß links oben) */
   .rank {
     position: absolute;
     top: -16px;
@@ -950,7 +861,6 @@
     filter: drop-shadow(0 4px 10px rgba(230,168,0,0.30));
   }
 
-  /* Bild-Platzhalter (Emoji) */
   .card-img {
     width: 100%;
     aspect-ratio: 4/3;
@@ -978,7 +888,6 @@
     border-radius: 8px;
   }
 
-  /* 🍎 Apple-Musik Blur-Label */
   .card-blur-label {
     position: relative;
     padding: 10px 13px 8px;
@@ -1009,7 +918,6 @@
     text-overflow: ellipsis;
   }
 
-  /* Card Footer */
   .card-footer {
     display: flex;
     justify-content: space-between;
@@ -1035,16 +943,12 @@
     font-weight: 500;
   }
 
-  /* Restaurant Grid */
   .restaurant-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 22px;
   }
 
-  /* ══════════════════════════════════════════════════════════════
-     HELL-MODUS OVERRIDES
-  ══════════════════════════════════════════════════════════════ */
   :global(html[data-theme='light']) .auth-card {
     background: rgba(255, 252, 240, 0.90);
     border-color: rgba(184,124,0,0.28);

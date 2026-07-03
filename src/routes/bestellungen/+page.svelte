@@ -1,7 +1,7 @@
 <script>
   import { goto } from '$app/navigation';
   import { warenkorb } from '$lib/stores/cart.js';
-  import { api, getToken } from '$lib/api.js';
+  import { api, getToken } from '$lib/api/api.js';
 
   // 🧾 BESTELLVERLAUF
   // Liest die früheren Bestellungen aus dem localStorage (werden beim Checkout

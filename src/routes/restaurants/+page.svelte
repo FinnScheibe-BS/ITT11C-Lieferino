@@ -2,7 +2,7 @@
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen } from '$lib/stores/bewertungen.js';
-  import { t } from '$lib/i18n.js';
+  import { t } from '$lib/utils/i18n.js';
   import { drachenlordAusloesen } from '$lib/stores/easteregg.js';
   import { konfetti, eierToast } from '$lib/confetti.js';
   import { istGeoeffnet } from '$lib/oeffnung.js';
