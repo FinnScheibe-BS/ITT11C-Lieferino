@@ -1,7 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { restaurants, getRestaurant } from '$lib/data';
-import { api } from '$lib/api.js';
+import { api } from '$lib/api/api.js';
 
 // 🔌 AKTIV/DEAKTIVIERT-STATUS DER LIEFERANTEN
 // Die Basis-Restaurants kommen aus der (unveränderlichen) zentralen Quelle.

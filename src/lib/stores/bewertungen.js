@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import { api, getToken } from '$lib/api.js';
+import { api, getToken } from '$lib/api/api.js';
 
 // ⭐ BEWERTUNGEN-STORE
 // Eingeloggt: Reviews kommen aus dem Backend (DB) – so sehen alle dieselben.

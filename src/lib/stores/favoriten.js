@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import { api, getToken } from '$lib/api.js';
+import { api, getToken } from '$lib/api/api.js';
 
 // ❤️ FAVORITEN-STORE
 // Speichert die Slugs der Lieblings-Restaurants. Eingeloggt: zusätzlich im

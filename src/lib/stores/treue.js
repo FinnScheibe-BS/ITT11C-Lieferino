@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import { api, getToken } from '$lib/api.js';
+import { api, getToken } from '$lib/api/api.js';
 
 // ⭐ TREUEPUNKTE
 // Der ECHTE Punktestand liegt jetzt SERVERSEITIG am Konto (manipulationssicher).

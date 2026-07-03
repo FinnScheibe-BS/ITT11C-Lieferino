@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import { api } from '$lib/api.js';
+import { api } from '$lib/api/api.js';
 
 // ⭐ DURCHSCHNITTS-BEWERTUNGEN (live aus der DB)
 // Hält pro Restaurant-Slug { schnitt, anzahl } aus den echten Bewertungen.
