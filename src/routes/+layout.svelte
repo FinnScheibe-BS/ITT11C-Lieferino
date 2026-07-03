@@ -9,6 +9,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { api, getToken } from '$lib/api/api.js';
 
   let anzahl = $state(0);
   let warenkorbSumme = $state(0);

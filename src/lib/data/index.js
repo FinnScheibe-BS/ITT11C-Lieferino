@@ -1,44 +1,54 @@
-import g from '../../../rw-26-cd.gif?inline';
-import { k } from './k.js';
+// src/lib/data/restaurants.js
 
-function b(s) {
-  const bin = atob(s);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-function s0(bytes) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < bytes.length; i++) {
-    h ^= bytes[i];
-    h = Math.imul(h, 0x01000193);
+// 🍕 Demo-Restaurants (ersetze mit deinen echten Daten)
+export const restaurants = [
+  {
+    id: '1',
+    name: 'Pizza Paradiso',
+    slug: 'pizza-paradiso',
+    image: '/images/pizza.jpg',
+    rating: 4.5,
+    deliveryTime: '20-30 min',
+    categories: ['Pizza', 'Italienisch'],
+    menu: [
+      { id: 'p1', name: 'Margherita', preis: 8.99 },
+      { id: 'p2', name: 'Salami', preis: 9.99 },
+    ]
+  },
+  {
+    id: '2',
+    name: 'Burger Boss',
+    slug: 'burger-boss',
+    image: '/images/burger.jpg',
+    rating: 4.3,
+    deliveryTime: '15-25 min',
+    categories: ['Burger', 'Amerikanisch'],
+    menu: [
+      { id: 'b1', name: 'Classic Burger', preis: 7.99 },
+      { id: 'b2', name: 'Cheese Burger', preis: 8.99 },
+    ]
+  },
+  {
+    id: '3',
+    name: 'Sushi Master',
+    slug: 'sushi-master',
+    image: '/images/sushi.jpg',
+    rating: 4.7,
+    deliveryTime: '25-35 min',
+    categories: ['Sushi', 'Japanisch'],
+    menu: [
+      { id: 's1', name: 'Maki Set', preis: 12.99 },
+      { id: 's2', name: 'Nigiri Mix', preis: 14.99 },
+    ]
   }
-  return h >>> 0;
-}
-
-function s1(seed, len) {
-  let x = seed || 0x9e3779b9;
-  const out = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    x ^= x << 13; x >>>= 0;
-    x ^= x >> 17;
-    x ^= x << 5; x >>>= 0;
-    out[i] = x & 0xff;
-  }
-  return out;
-}
-
-const c = b(k);
-const img = b(g.slice(g.indexOf(',') + 1));
-const ks = s1(s0(img), c.length);
-const o = new Uint8Array(c.length);
-for (let i = 0; i < c.length; i++) o[i] = c[i] ^ ks[i];
-
-export const restaurants = JSON.parse(new TextDecoder().decode(o));
+];
 
 export function getRestaurant(slugOderName) {
   return restaurants.find(
     (r) => r.slug === slugOderName || r.name === slugOderName
   );
+}
+
+export function getAllRestaurants() {
+  return restaurants;
 }

@@ -4,8 +4,8 @@
   //   'mfaSetup'  -> Authenticator einrichten (QR + erster Code)
   //   'mfaVerify' -> beim Login den MFA-Code eingeben
   // Bei Erfolg ruft die Komponente onFertig({ token, user }) auf.
-  import { api, setzeToken } from '$lib/api.js';
-  import { t } from '$lib/i18n.js';
+  import { api, setzeToken } from '$lib/api/api.js';
+  import { t } from '$lib/utils/i18n.js';
 
   let { start = 'verify', email = '', setupToken = '', mfaToken = '', onFertig } = $props();
 
