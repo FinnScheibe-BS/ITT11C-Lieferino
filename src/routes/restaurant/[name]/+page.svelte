@@ -1,11 +1,11 @@
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { zumWarenkorb } from '$lib/stores/cart.js';
-  import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen, bewertungHinzufuegen, ladeBewertungen } from '$lib/stores/bewertungen.js';
   import { deaktivierteLieferanten, findeRestaurant } from '$lib/stores/lieferanten.js';
   import { api, getToken } from '$lib/api.js';
+  import Speisekarte from '$lib/components/restaurant/Speisekarte.svelte';
+  import RestaurantHeader from '$lib/components/restaurant/RestaurantHeader.svelte';
 
   // Den Slug aus der URL holen und das Restaurant suchen (inkl. Geheim-Restaurant).
   // Deaktivierte Lieferanten behandeln wir für normale Nutzer wie "nicht gefunden".
@@ -63,17 +63,6 @@
     return minutenJetzt >= oh * 60 + om && minutenJetzt < sh * 60 + sm;
   });
 
-  // Mengen-Auswahl pro Gericht (Standard 1).
-  let mengen = $state({});
-  function menge(id) {
-    return mengen[id] ?? 1;
-  }
-
-  function aendere(id, delta) {
-    const neu = Math.max(1, menge(id) + delta);
-    mengen = { ...mengen, [id]: neu };
-  }
-
   // Eingabefelder für eine neue Bewertung.
   let neuName = $state('');
   let neuSterne = $state(5);
@@ -82,23 +71,11 @@
   let bewertungFehler = $state('');
   async function bewertungAbschicken(e) {
     e.preventDefault();
-
     if (!hatHierBestellt) return;
     if (neuName.trim() === '' || neuText.trim() === '') return;
 
     bewertungHinzufuegen(slug, { name: neuName, sterne: neuSterne, text: neuText });
 
-    if (neuName.trim() === '' || neuText.trim() === '') return;
-    bewertungFehler = '';
-
-    const r = await bewertungHinzufuegen(slug, {
-      name: neuName, sterne: neuSterne, text: neuText, restaurantName: restaurant.name
-    });
-    if (!r.ok) {
-      bewertungFehler = r.daten?.fehler || 'Bewertung konnte nicht gespeichert werden.';
-      return;
-    }
-    // Felder zurücksetzen
     neuName = '';
     neuText = '';
     neuSterne = 5;
@@ -107,16 +84,6 @@
   // Kleine Bestätigung, die kurz eingeblendet wird.
   let hinweis = $state('');
   let hinweisTimer;
-
-  function hinzufuegen(gericht) {
-    const anzahl = menge(gericht.id);
-    zumWarenkorb(gericht, restaurant.name, anzahl);
-    hinweis = `${anzahl}× ${gericht.name} hinzugefügt ✅`;
-    mengen = { ...mengen, [gericht.id]: 1 };
-
-    clearTimeout(hinweisTimer);
-    hinweisTimer = setTimeout(() => (hinweis = ''), 2000);
-  }
 </script>
 
 {#if restaurant}
@@ -124,67 +91,23 @@
     <a href="/restaurants" class="zurueck">⬅️ Zu allen Restaurants</a>
 
     <!-- Kopfbereich des Restaurants -->
-    <section class="kopf karte">
-      <span class="emoji">{restaurant.emoji}</span>
-      <div class="kopf-inhalt">
-        <h1>
-          {restaurant.name}
-          <button class="herz" onclick={() => toggleFavorit(slug)} aria-label="Favorit">
-            {$favoriten.includes(slug) ? '❤️' : '🤍'}
-          </button>
-        </h1>
+    <RestaurantHeader
+      {restaurant}
+      {slug}
+      {durchschnitt}
+      {reviews}
+      {geoeffnet}
+    />
 
-        <p class="meta">
-          <a href="#bewertungen" class="bewertung-link">⭐ {durchschnitt.toFixed(1)} ({reviews.length} Bewertungen)</a>
-          <span>·</span>
-          <span>⏱️ {restaurant.lieferzeit}</span>
-          <span>·</span>
-          <span>Min. {restaurant.minBestell}€</span>
-        </p>
 
-        <p class="oeffnung">
-          {#if geoeffnet}
-            <span class="status auf">🟢 Jetzt geöffnet</span>
-          {:else}
-            <span class="status zu">🔴 Geschlossen</span>
-          {/if}
-          <span class="zeiten">({restaurant.oeffnetUm}–{restaurant.schliesstUm} Uhr)</span>
-        </p>
-
-        <p class="beschreibung">{restaurant.beschreibung}</p>
-      </div>
-    </section>
-
-    <h2>📋 Speisekarte</h2>
-    <div class="speisekarte">
-      {#each restaurant.speisekarte as gericht}
-        <article class="gericht">
-          <div class="gericht-info">
-            <h3>
-              {gericht.name}
-              {#if gericht.veg}<span class="veg-tag">🌱 vegetarisch</span>{/if}
-            </h3>
-
-            <p class="gericht-desc">{gericht.beschreibung}</p>
-
-            {#if gericht.allergene && gericht.allergene.length > 0}
-              <p class="allergene">Enthält: {gericht.allergene.join(', ')}</p>
-            {/if}
-
-            <span class="preis">{gericht.preis.toFixed(2)}€</span>
-          </div>
-
-          <div class="gericht-aktion">
-            <div class="stepper" aria-label="Menge auswählen">
-              <button onclick={() => aendere(gericht.id, -1)} aria-label="Weniger">−</button>
-              <span>{menge(gericht.id)}</span>
-              <button onclick={() => aendere(gericht.id, 1)} aria-label="Mehr">+</button>
-            </div>
-            <button class="add-btn" onclick={() => hinzufuegen(gericht)}>+ Hinzufügen</button>
-          </div>
-        </article>
-      {/each}
-    </div>
+    <Speisekarte
+      {restaurant}
+        onHinweis={(text) => {
+        hinweis = text;
+        clearTimeout(hinweisTimer);
+        hinweisTimer = setTimeout(() => (hinweis = ''), 2000);
+      }}
+    />
 
     <h2 id="bewertungen">⭐ Bewertungen ({reviews.length})</h2>
 
