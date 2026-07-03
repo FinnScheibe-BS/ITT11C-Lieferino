@@ -599,12 +599,3 @@
     }
   }
 </style>
-  .bewertung-link { color: inherit; text-decoration: underline; text-decoration-style: dotted; cursor: pointer; }
-  .review-sperre { background: #f7f7f7; border: 1px solid #eee; border-radius: 12px; padding: 14px; color: #777; }
-  .review-fehler { color: #dc3545; font-weight: 600; font-size: 0.85rem; margin: 0; }
-  .keine-reviews { color: #777; }
-  .reviews { display: flex; flex-direction: column; gap: 10px; }
-  .review { background: white; border: 1px solid #eee; border-radius: 12px; padding: 14px; }
-  .review-kopf { display: flex; justify-content: space-between; margin-bottom: 6px; }
-  .review p { margin: 0; color: #555; }
-</style>
