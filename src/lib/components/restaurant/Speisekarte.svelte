@@ -59,3 +59,130 @@
     </article>
   {/each}
 </div>
+
+<style>
+.speisekarte {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gericht {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+}
+
+.gericht-info {
+  min-width: 0;
+}
+
+.gericht-info h3 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 6px;
+}
+
+.gericht-desc {
+  color: rgba(245, 240, 232, 0.68);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  margin: 0 0 8px;
+}
+
+.allergene {
+  color: rgba(245, 240, 232, 0.42);
+  font-size: 0.78rem;
+  margin: 0 0 8px;
+}
+
+.preis {
+  display: inline-flex;
+  color: #f9c932;
+  font-weight: 800;
+  font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+}
+
+.veg-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: rgba(99, 212, 113, 0.12);
+  border: 1px solid rgba(99, 212, 113, 0.28);
+  color: #8ff09a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+}
+
+.gericht-aktion {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(255, 248, 220, 0.06);
+  border: 1px solid rgba(230, 168, 0, 0.18);
+  font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+}
+
+.stepper button {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+}
+
+.stepper span {
+  min-width: 18px;
+  color: #f5f0e8;
+  text-align: center;
+  font-weight: 800;
+}
+
+.add-btn {
+  white-space: nowrap;
+}
+
+:global(html[data-theme='light']) .gericht-desc {
+  color: rgba(26, 18, 0, 0.72);
+}
+
+:global(html[data-theme='light']) .allergene {
+  color: rgba(26, 18, 0, 0.45);
+}
+
+:global(html[data-theme='light']) .stepper span {
+  color: #1a1200;
+}
+
+@media (max-width: 680px) {
+  .gericht {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gericht-aktion {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+}
+</style>

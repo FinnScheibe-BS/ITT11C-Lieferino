@@ -1,7 +1,17 @@
 <script>
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
+  import { bewertungen } from '$lib/stores/bewertungen.js';
 
-  let { restaurant, slug, durchschnitt, reviews, geoeffnet } = $props();
+  let { restaurant, slug, geoeffnet } = $props();
+
+  let reviews = $derived($bewertungen[slug] || []);
+
+  let durchschnitt = $derived.by(() => {
+    if (reviews.length === 0) return restaurant?.bewertung ?? 0;
+
+    const summe = reviews.reduce((gesamt, review) => gesamt + review.sterne, 0);
+    return summe / reviews.length;
+  });
 </script>
 
 <section class="kopf karte">
