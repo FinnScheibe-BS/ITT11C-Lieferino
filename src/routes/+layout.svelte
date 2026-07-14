@@ -12,9 +12,6 @@
   import { t, sprache, setzeSprache, SPRACHEN } from '$lib/utils/i18n.js';
   import { eingeloggt, logout } from '$lib/stores/auth.js';
 
-  import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
-
   let anzahl = $state(0);
   let warenkorbSumme = $state(0);
   let menuOffen = $state(false);

@@ -1,9 +1,9 @@
 <script>
   import { goto } from '$app/navigation';
   import { login } from '$lib/stores/auth.js';
-  import { api } from '$lib/api.js';
-  import { t } from '$lib/i18n.js';
-  import AuthVollenden from '$lib/AuthVollenden.svelte';
+  import { api } from '$lib/api/api.js';
+  import { t } from '$lib/utils/i18n.js';
+  import AuthVollenden from '$lib/components/auth/AuthVollenden.svelte';
 
   // 'login' = E-Mail+Passwort. 'weiter' = Code/MFA über die AuthVollenden-Komponente.
   let schritt = $state('login');

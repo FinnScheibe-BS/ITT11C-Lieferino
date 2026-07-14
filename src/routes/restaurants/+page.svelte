@@ -3,10 +3,7 @@
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen } from '$lib/stores/bewertungen.js';
   import { t } from '$lib/utils/i18n.js';
-  import { konfetti, eierToast } from '$lib/confetti.js';
-  import { istGeoeffnet } from '$lib/oeffnung.js';
-  import { toggleEmojiCursor, toggleSaison } from '$lib/stores/funmodus.js';
-  import { geheimFreischalten } from '$lib/stores/lieferanten.js';
+  import { istGeoeffnet } from '$lib/utils/oeffnung.js';
 
   let gewaehlterTyp = $state('alle');
   let sortierung = $state('standard');
@@ -14,24 +11,6 @@
   let nurFavoriten = $state(false);
   let nurVeg = $state(false);
   let nurGeoeffnet = $state(false);
-
-  $effect(() => {
-    const s = suche.toLowerCase().replace(/\s/g, '');
-    if (s === 'drachenlord') drachenlordAusloesen();
-    else if (s === 'pizzapizzapizza') {
-      konfetti({ anzahl: 120, dauer: 3000, emojis: ['🍕'] });
-      eierToast('🍕 Geheimcode entdeckt!');
-    } else if (s === 'foodcursor') {
-      toggleEmojiCursor();
-      eierToast('🖱️ Emoji-Cursor umgeschaltet!');
-    } else if (s === 'schnee' || s === 'winter') {
-      toggleSaison();
-      eierToast('❄️ Saison-Effekt umgeschaltet!');
-    } else if (s === 'dragonpizza') {
-      geheimFreischalten();
-      eierToast('🐲 Geheimes Restaurant freigeschaltet! 🔥');
-    }
-  });
 
   function anzeigeBewertung(r) {
     const reviews = $bewertungen[r.slug] || [];

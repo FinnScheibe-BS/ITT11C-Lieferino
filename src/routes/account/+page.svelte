@@ -1,8 +1,8 @@
 <script>
   import { eingeloggt, logout } from '$lib/stores/auth.js';
   import { treuepunkte } from '$lib/stores/treue.js';
-  import { api, getToken } from '$lib/api.js';
-  import { t } from '$lib/i18n.js';
+  import { api, getToken } from '$lib/api/api.js';
+  import { t } from '$lib/utils/i18n.js';
 
   let user = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
   let geladen = $state(false);
