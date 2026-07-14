@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # --- DATENBANK SERVICE ---
+  mysql-db:
+    image: mysql:8.0
+    container_name: aup_backend-mysql-db-1
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: restaurant_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Automatischer Import: Falls du hier ein SQL-Skript ablegst, wird es beim ersten Start geladen
+      - ./init-db:/docker-entrypoint-initdb.d
+
+  # --- BACKEND API SERVICE (Go) ---
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aup_backend-api-1
+    ports:
+      - "8080:8080"
+    restart: always
+    depends_on:
+      - mysql-db  # Wartet, bis der DB-Container gestartet wurde
+    environment:
+      - DB_HOST=mysql-db
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=rootpass
+      - DB_NAME=restaurant_db
+      - TZ=Europe/Berlin
+
+volumes:
+  mysql_data:
