@@ -19,9 +19,10 @@ export async function holeRestaurants() {
         const response = await fetch(`${API_BASE_URL}/restaurants`);
         if (!response.ok) throw new Error('Fehler beim Laden');
         const apiDaten = await response.json();
-        
+
         return apiDaten.map(r => ({
             id: r.id,
+            restaurantId: r.restaurant_id,
             name: r.name,
             slug: generiereSlug(r.name),
             beschreibung: r.adresse,

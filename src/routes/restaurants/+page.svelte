@@ -1,18 +1,13 @@
 <script>
   import { holeRestaurants } from '$lib/api/restaurantService.js';
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
-  import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen } from '$lib/stores/bewertungen.js';
   import { t } from '$lib/utils/i18n.js';
-  import { istGeoeffnet } from '$lib/utils/oeffnung.js';
   import { onMount } from 'svelte';
 
   let gewaehlterTyp = $state('alle');
   let sortierung = $state('standard');
   let suche = $state('');
-  let nurFavoriten = $state(false);
-  let nurVeg = $state(false);
-  let nurGeoeffnet = $state(false);
 
   // Holt die Daten live aus der API, sobald die Seite lädt
   onMount(async () => {
@@ -33,9 +28,6 @@
       .slice()
       .filter((r) => gewaehlterTyp === 'alle' || r.typ === gewaehlterTyp)
       .filter((r) => r.name.toLowerCase().includes(suche.toLowerCase()))
-      .filter((r) => !nurFavoriten || $favoriten.includes(r.slug))
-      .filter((r) => !nurVeg || r.speisekarte.some((g) => g.veg))
-      .filter((r) => !nurGeoeffnet || istGeoeffnet(r))
       .sort((a, b) => {
         if (sortierung === 'bewertung') return anzeigeBewertung(b) - anzeigeBewertung(a);
         if (sortierung === 'minbestell-auf') return a.minBestell - b.minBestell;
@@ -44,12 +36,6 @@
   );
 
   let typen = $derived([...new Set($aktiveRestaurants.map((r) => r.typ))]);
-
-  function herzKlick(event, slug) {
-    event.preventDefault();
-    event.stopPropagation();
-    toggleFavorit(slug);
-  }
 </script>
 
 <div class="seite">
@@ -73,18 +59,6 @@
       <option value="bewertung">{$t('rest.sort_rating')}</option>
       <option value="minbestell-auf">{$t('rest.sort_minorder')}</option>
     </select>
-
-    <button class="fav-filter" class:aktiv={nurFavoriten} onclick={() => (nurFavoriten = !nurFavoriten)}>
-      {nurFavoriten ? $t('rest.only_favs') : $t('rest.all')}
-    </button>
-
-    <button class="fav-filter veg" class:aktiv={nurVeg} onclick={() => (nurVeg = !nurVeg)}>
-      {$t('rest.veg')}
-    </button>
-
-    <button class="fav-filter offen" class:aktiv={nurGeoeffnet} onclick={() => (nurGeoeffnet = !nurGeoeffnet)}>
-      🟢 Jetzt geöffnet
-    </button>
   </div>
 
   <p class="treffer">{$t('rest.found').replace('{n}', gefilterteRestaurants.length)}</p>
@@ -94,19 +68,12 @@
       <a href="/restaurant/{r.slug}" class="restaurant-card karte">
         <span class="emoji-bild">{r.emoji}</span>
 
-        <!-- Herz & Badge oben -->
-        <button class="herz" onclick={(e) => herzKlick(e, r.slug)} aria-label="Favorit">
-          {$favoriten.includes(r.slug) ? '❤️' : '🤍'}
-        </button>
-        <span class="rating-badge">⭐ {anzeigeBewertung(r).toFixed(1)}</span>
-
         <!-- Text unten -->
         <div class="card-info">
           <p>{r.beschreibung}</p>
           <h3>{r.name}</h3>
           <div class="card-meta">
             <span class="tag">{r.typ}</span>
-            <span class="lieferzeit">⏱️ {r.lieferzeit}</span>
           </div>
         </div>
       </a>
@@ -164,35 +131,6 @@
     cursor: pointer;
   }
 
-  .fav-filter {
-    padding: 9px 16px;
-    border-radius: 10px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.18s ease;
-    white-space: nowrap;
-  }
-
-  .fav-filter:hover {
-    transform: scale(1.02);
-  }
-
-  .fav-filter.aktiv {
-    border-color: rgba(230, 168, 0, 0.8) !important;
-    box-shadow: 0 0 0 3px rgba(230, 168, 0, 0.15) !important;
-  }
-
-  .fav-filter.veg.aktiv {
-    border-color: #4caf50 !important;
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2) !important;
-  }
-
-  .fav-filter.offen.aktiv {
-    border-color: #2e9e4f !important;
-    box-shadow: 0 0 0 3px rgba(46, 158, 79, 0.2) !important;
-  }
-
   .treffer {
     color: rgba(245, 240, 232, 0.6);
     font-size: 0.85rem;
@@ -210,7 +148,6 @@
     gap: 24px;
   }
 
-  /* ─── Card Basis ──────────────────────────────────────────────────── */
   .restaurant-card {
     aspect-ratio: 4 / 3;
     display: block;
@@ -218,10 +155,9 @@
     color: inherit;
     position: relative;
     overflow: hidden;
-    --textbox-h: 90px; /* zentrale Stellschraube für Höhe des Textbereichs */
+    --textbox-h: 100px; /* Etwas höher für besseren Textplatz */
   }
 
-  /* ─── Emoji Bild (zentriert im Bereich ÜBER der Textbox) ─────────── */
   .emoji-bild {
     position: absolute;
     top: 0;
@@ -241,114 +177,71 @@
     transform: scale(1.08);
   }
 
-  /* ─── Herz Button ─────────────────────────────────────────────────── */
-  .herz {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    background: rgba(255, 255, 255, 0.15);
-    border: none;
-    border-radius: 50%;
-    width: 42px;
-    height: 42px;
-    font-size: 1.3rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.18s ease;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 4;
-    padding: 0;
-  }
-
-  .herz:hover {
-    background: rgba(255, 255, 255, 0.25);
-    transform: scale(1.12);
-  }
-
-  /* ─── Rating Badge ────────────────────────────────────────────────── */
-  .rating-badge {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    background: rgba(0, 0, 0, 0.75);
-    color: #ffd700;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 4;
-    font-family: 'Geist Sans', -apple-system, sans-serif !important;
-  }
-
-  /* ─── Card Info Text ──────────────────────────────────────────────── */
   .card-info {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: var(--textbox-h);
-  box-sizing: border-box;
-  overflow: hidden;
-  padding: 14px 18px 16px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  z-index: 3;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0) 100%);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--textbox-h);
+    box-sizing: border-box;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 6px;
+    z-index: 3;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.6) 60%, rgba(0, 0, 0, 0) 100%);
   }
 
   .card-info h3 {
     margin: 0;
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 600;
     color: #fff !important;
-    white-space: nowrap;
+    white-space: normal; /* ✅ Umbrechen erlaubt */
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Max 2 Zeilen */
+    -webkit-box-orient: vertical;
   }
 
   .card-info p {
     margin: 0;
-    color: rgba(255, 220, 100, 0.9) !important;
-    font-size: 0.82rem;
-    line-height: 1.2;
-    white-space: nowrap;
+    color: rgba(255, 220, 100, 0.85) !important;
+    font-size: 0.78rem;
+    line-height: 1.25;
+    white-space: normal; /* ✅ Umbrechen erlaubt */
     overflow: hidden;
     text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Max 2 Zeilen */
+    -webkit-box-orient: vertical;
   }
 
   .card-meta {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 8px;
-    margin-top: 2px;
+    margin-top: 4px;
   }
 
   .tag {
     background: rgba(230, 168, 0, 0.2);
     color: #f9c932 !important;
-    padding: 4px 12px;
-    border-radius: 14px;
-    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.72rem;
     font-weight: 600;
     border: 1px solid rgba(230, 168, 0, 0.25);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 60%;
   }
 
   .lieferzeit {
     color: rgba(255, 255, 255, 0.8) !important;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     white-space: nowrap;
     flex-shrink: 0;
   }

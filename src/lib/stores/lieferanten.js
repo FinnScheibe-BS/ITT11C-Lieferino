@@ -1,10 +1,24 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-import { restaurants, getRestaurant } from '$lib/data';
+import { getRestaurant } from '$lib/data';
 import { api } from '$lib/api/api.js';
+import { holeRestaurants } from '$lib/api/restaurantService.js';
+
+// 📡 BASIS-RESTAURANTS – kommen jetzt live von der API statt aus der
+// statischen $lib/data-Tabelle. Wird beim Laden im Browser befüllt.
+export const restaurantsRoh = writable([]);
+
+export async function ladeRestaurantsVonApi() {
+  const daten = await holeRestaurants();
+  if (daten && daten.length > 0) {
+    restaurantsRoh.set(daten);
+  }
+}
+
+if (browser) ladeRestaurantsVonApi();
 
 // 🔌 AKTIV/DEAKTIVIERT-STATUS DER LIEFERANTEN
-// Die Basis-Restaurants kommen aus der (unveränderlichen) zentralen Quelle.
+// Die Basis-Restaurants kommen jetzt live von der API (siehe oben).
 // Der Admin kann Lieferanten "deaktivieren" – wir merken uns die Slugs der
 // deaktivierten Lieferanten im localStorage. Deaktivierte Lieferanten sind für
 // normale Nutzer (öffentliche Listen) unsichtbar.
@@ -95,12 +109,13 @@ export async function ladeAktivStatus() {
 if (browser) ladeAktivStatus();
 
 // Nur die AKTIVEN Restaurants – für alle öffentlichen Listen (normale Nutzer).
+// Basis sind jetzt die live von der API geladenen Restaurants (restaurantsRoh).
 // Ausgeblendet wird, wer lokal ODER im Backend deaktiviert ist.
 export const aktiveRestaurants = derived(
-  [deaktivierteLieferanten, dbDeaktiviert, geheimFreigeschaltet],
-  ([$deaktiviert, $dbDeaktiviert, $geheim]) => {
+  [restaurantsRoh, deaktivierteLieferanten, dbDeaktiviert, geheimFreigeschaltet],
+  ([$restaurantsRoh, $deaktiviert, $dbDeaktiviert, $geheim]) => {
     const aus = new Set([...$deaktiviert, ...$dbDeaktiviert]);
-    const sichtbar = restaurants.filter((r) => !aus.has(r.slug));
+    const sichtbar = $restaurantsRoh.filter((r) => !aus.has(r.slug));
     return $geheim ? [GEHEIMES_RESTAURANT, ...sichtbar] : sichtbar;
   }
 );

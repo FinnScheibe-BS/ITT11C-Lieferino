@@ -1,6 +1,6 @@
 <script>
   import { bewertungen, bewertungHinzufuegen, ladeBewertungen } from '$lib/stores/bewertungen.js';
-  import { api, getToken } from '$lib/api.js';
+  import { api, getToken } from '$lib/api/api.js';
 
   let { restaurant, slug } = $props();
 
