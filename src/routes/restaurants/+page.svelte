@@ -1,9 +1,11 @@
 <script>
+  import { holeRestaurants } from '$lib/api/restaurantService.js';
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
   import { favoriten, toggleFavorit } from '$lib/stores/favoriten.js';
   import { bewertungen } from '$lib/stores/bewertungen.js';
   import { t } from '$lib/utils/i18n.js';
   import { istGeoeffnet } from '$lib/utils/oeffnung.js';
+  import { onMount } from 'svelte';
 
   let gewaehlterTyp = $state('alle');
   let sortierung = $state('standard');
@@ -11,6 +13,14 @@
   let nurFavoriten = $state(false);
   let nurVeg = $state(false);
   let nurGeoeffnet = $state(false);
+
+  // Holt die Daten live aus der API, sobald die Seite lädt
+  onMount(async () => {
+    const daten = await holeRestaurants();
+    if (daten && daten.length > 0) {
+      $aktiveRestaurants = daten; 
+    }
+  });
 
   function anzeigeBewertung(r) {
     const reviews = $bewertungen[r.slug] || [];
