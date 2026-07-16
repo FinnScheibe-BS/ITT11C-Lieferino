@@ -432,7 +432,7 @@
         <div class="hero-badge-wrapper">
           <span class="hero-badge">
             <span class="badge-dot"></span>
-            <span>Lieferino Premium</span>
+            <span>Das edelste Essen, direkt zu Ihnen nach hause</span>
           </span>
         </div>
        
@@ -653,7 +653,7 @@
   }
  
   /* ════════════════════════════════════════════════════════════════
-     HERO BANNER – Premium Custom Design
+     HERO BANNER – Full Width Fix ✅
      ════════════════════════════════════════════════════════════════ */
  
   .hero-banner {
@@ -665,6 +665,10 @@
     padding: 140px 24px 80px;
     overflow: hidden;
     isolation: isolate;
+    /* ✅ FULL WIDTH FIX - Diese 3 Zeilen wurden hinzugefügt */
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
   }
  
   .hero-bg-layer {
@@ -1760,4 +1764,3 @@
     }
   }
 </style>
- 

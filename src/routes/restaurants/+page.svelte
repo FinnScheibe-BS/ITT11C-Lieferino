@@ -65,18 +65,11 @@
 
   <div class="grid">
     {#each gefilterteRestaurants as r}
-<<<<<<< HEAD
-      <a href="/restaurant/{r.slug}" class="restaurant-card karte">
-        <span class="emoji-bild">{r.emoji}</span>
-
-        <!-- Text unten -->
-=======
       <a href="/restaurant/{r.slug}" class="restaurant-card">
         <div class="card-bild">
           <span class="emoji-bild">{r.emoji}</span>
         </div>
 
->>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
         <div class="card-info">
           <h3>{r.name}</h3>
           <div class="card-meta">
@@ -156,11 +149,8 @@
     align-items: stretch;
   }
 
-<<<<<<< HEAD
-=======
   /* Eigenständige Card, bewusst NICHT über .karte gestylt, damit keine
      fremden display/align-items/padding-Regeln das Layout hier kaputt machen. */
->>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
   .restaurant-card {
     display: flex !important;
     flex-direction: column !important;
@@ -174,15 +164,6 @@
     border: 1px solid rgba(230, 168, 0, 0.15);
   }
 
-<<<<<<< HEAD
-  .emoji-bild {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: var(--textbox-h);
-    display: flex;
-=======
   /* Bildbereich: eigene, feste Höhe – kein Overlay, kein Absolute-Positioning. */
   .card-bild {
     position: relative;
@@ -190,7 +171,6 @@
     height: 222px;
     flex: 0 0 222px !important;
     display: flex !important;
->>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
     align-items: center;
     justify-content: center;
     overflow: hidden;
@@ -248,10 +228,7 @@
     transform: scale(1.08);
   }
 
-<<<<<<< HEAD
-=======
   /* Textbereich: normaler Blockfluss darunter, wächst mit dem Inhalt statt zu überlappen */
->>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
   .card-info {
     width: 100%;
     flex: 1 1 auto !important;
@@ -268,15 +245,10 @@
     z-index: 3;
   }
 
-<<<<<<< HEAD
-  .card-info h3 {
-    margin: 0;
-=======
   .card-info h2 {
     width: 100%;
     margin: 0 !important;
     padding: 0 !important;
->>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
     font-size: 1.1rem;
     font-weight: 600;
     color: #fff !important;
@@ -291,22 +263,6 @@
     -webkit-box-orient: vertical;
   }
 
-<<<<<<< HEAD
-  .card-info p {
-    margin: 0;
-    color: rgba(255, 220, 100, 0.85) !important;
-    font-size: 0.78rem;
-    line-height: 1.25;
-    white-space: normal; /* ✅ Umbrechen erlaubt */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* Max 2 Zeilen */
-    -webkit-box-orient: vertical;
-  }
-
-=======
->>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
   .card-meta {
     display: flex;
     justify-content: flex-start;
