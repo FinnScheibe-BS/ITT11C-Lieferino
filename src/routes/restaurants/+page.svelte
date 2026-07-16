@@ -4,25 +4,25 @@
   import { bewertungen } from '$lib/stores/bewertungen.js';
   import { t } from '$lib/utils/i18n.js';
   import { onMount } from 'svelte';
-
+  
   let gewaehlterTyp = $state('alle');
   let sortierung = $state('standard');
   let suche = $state('');
-
+  
   // Holt die Daten live aus der API, sobald die Seite lädt
   onMount(async () => {
     const daten = await holeRestaurants();
     if (daten && daten.length > 0) {
-      $aktiveRestaurants = daten; 
+      $aktiveRestaurants = daten;
     }
   });
-
+  
   function anzeigeBewertung(r) {
     const reviews = $bewertungen[r.slug] || [];
     if (reviews.length === 0) return r.bewertung;
     return reviews.reduce((s, b) => s + b.sterne, 0) / reviews.length;
   }
-
+  
   let gefilterteRestaurants = $derived(
     $aktiveRestaurants
       .slice()
@@ -34,7 +34,7 @@
         return 0;
       })
   );
-
+  
   let typen = $derived([...new Set($aktiveRestaurants.map((r) => r.typ))]);
 </script>
 
@@ -149,8 +149,6 @@
     align-items: stretch;
   }
 
-  /* Eigenständige Card, bewusst NICHT über .karte gestylt, damit keine
-     fremden display/align-items/padding-Regeln das Layout hier kaputt machen. */
   .restaurant-card {
     display: flex !important;
     flex-direction: column !important;
@@ -164,7 +162,6 @@
     border: 1px solid rgba(230, 168, 0, 0.15);
   }
 
-  /* Bildbereich: eigene, feste Höhe – kein Overlay, kein Absolute-Positioning. */
   .card-bild {
     position: relative;
     width: 100%;
@@ -177,14 +174,14 @@
     background: radial-gradient(circle at 50% 40%, rgba(230, 168, 0, 0.12), rgba(0, 0, 0, 0) 70%);
   }
 
-  /* Verlauf/Blur nimmt 2/5 der Bildhöhe ein, sauber innerhalb des Bildes. */
+  /* Blur reduziert von 40% auf 25% */
   .card-bild::after {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 40%;
+    height: 30%;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     background: linear-gradient(
@@ -197,14 +194,13 @@
     pointer-events: none;
   }
 
-  /* Dünne Trennlinie mit leichtem Glow/Layer-Effekt genau am oberen Rand
-     des Verlaufs. */
+  /* Trennlinie angepasst an neue Blur-Höhe */
   .card-bild::before {
     content: '';
     position: absolute;
     left: 16px;
     right: 16px;
-    bottom: 40%;
+    bottom: 30%;
     height: 1px;
     background: linear-gradient(
       to right,
@@ -228,14 +224,14 @@
     transform: scale(1.08);
   }
 
-  /* Textbereich: normaler Blockfluss darunter, wächst mit dem Inhalt statt zu überlappen */
+  /* Textbereich höher positioniert (margin von -14px auf -6px reduziert) */
   .card-info {
     width: 100%;
     flex: 1 1 auto !important;
     min-height: 64px;
     box-sizing: border-box;
     padding: 6px 16px 18px;
-    margin-top: -14px;
+    margin-top: -6px;
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
@@ -245,7 +241,7 @@
     z-index: 3;
   }
 
-  .card-info h2 {
+  .card-info h3 {
     width: 100%;
     margin: 0 !important;
     padding: 0 !important;

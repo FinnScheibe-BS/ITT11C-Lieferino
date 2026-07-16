@@ -1,6 +1,6 @@
 // $lib/api/gerichtService.js
-const BASE_URL = 'http://172.30.4.90:8080/api';
-
+const BASE_URL = 'http://localhost:8080/api';
+//const BASE_URL = 'http://172.30.4.90:8080/api';
 export async function holeGerichte(restaurantId) {
   try {
     const response = await fetch(`${BASE_URL}/gerichte`);
