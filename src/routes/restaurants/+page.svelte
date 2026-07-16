@@ -65,12 +65,19 @@
 
   <div class="grid">
     {#each gefilterteRestaurants as r}
+<<<<<<< HEAD
       <a href="/restaurant/{r.slug}" class="restaurant-card karte">
         <span class="emoji-bild">{r.emoji}</span>
 
         <!-- Text unten -->
+=======
+      <a href="/restaurant/{r.slug}" class="restaurant-card">
+        <div class="card-bild">
+          <span class="emoji-bild">{r.emoji}</span>
+        </div>
+
+>>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
         <div class="card-info">
-          <p>{r.beschreibung}</p>
           <h3>{r.name}</h3>
           <div class="card-meta">
             <span class="tag">{r.typ}</span>
@@ -146,18 +153,28 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 24px;
+    align-items: stretch;
   }
 
+<<<<<<< HEAD
+=======
+  /* Eigenständige Card, bewusst NICHT über .karte gestylt, damit keine
+     fremden display/align-items/padding-Regeln das Layout hier kaputt machen. */
+>>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
   .restaurant-card {
-    aspect-ratio: 4 / 3;
-    display: block;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
     text-decoration: none;
     color: inherit;
-    position: relative;
     overflow: hidden;
-    --textbox-h: 100px; /* Etwas höher für besseren Textplatz */
+    border-radius: 16px;
+    background: #1c1710;
+    border: 1px solid rgba(230, 168, 0, 0.15);
   }
 
+<<<<<<< HEAD
   .emoji-bild {
     position: absolute;
     top: 0;
@@ -165,48 +182,116 @@
     right: 0;
     bottom: var(--textbox-h);
     display: flex;
+=======
+  /* Bildbereich: eigene, feste Höhe – kein Overlay, kein Absolute-Positioning. */
+  .card-bild {
+    position: relative;
+    width: 100%;
+    height: 222px;
+    flex: 0 0 222px !important;
+    display: flex !important;
+>>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
     align-items: center;
     justify-content: center;
-    font-size: 6.5rem;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 40%, rgba(230, 168, 0, 0.12), rgba(0, 0, 0, 0) 70%);
+  }
+
+  /* Verlauf/Blur nimmt 2/5 der Bildhöhe ein, sauber innerhalb des Bildes. */
+  .card-bild::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 40%;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    background: linear-gradient(
+      to bottom,
+      rgba(28, 23, 16, 0) 0%,
+      rgba(28, 23, 16, 0.5) 55%,
+      rgba(28, 23, 16, 0.92) 100%
+    );
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Dünne Trennlinie mit leichtem Glow/Layer-Effekt genau am oberen Rand
+     des Verlaufs. */
+  .card-bild::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 40%;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.4) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    box-shadow: 0 1px 4px rgba(255, 255, 255, 0.15);
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .emoji-bild {
+    font-size: 6.2rem;
+    line-height: 1;
     filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
     transition: transform 0.3s ease;
-    z-index: 1;
   }
 
   .restaurant-card:hover .emoji-bild {
     transform: scale(1.08);
   }
 
+<<<<<<< HEAD
+=======
+  /* Textbereich: normaler Blockfluss darunter, wächst mit dem Inhalt statt zu überlappen */
+>>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
   .card-info {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: var(--textbox-h);
+    width: 100%;
+    flex: 1 1 auto !important;
+    min-height: 64px;
     box-sizing: border-box;
-    padding: 12px 16px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: 6px;
+    padding: 6px 16px 18px;
+    margin-top: -14px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 3px;
+    position: relative;
     z-index: 3;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.6) 60%, rgba(0, 0, 0, 0) 100%);
   }
 
+<<<<<<< HEAD
   .card-info h3 {
     margin: 0;
+=======
+  .card-info h2 {
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+>>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
     font-size: 1.1rem;
     font-weight: 600;
     color: #fff !important;
-    white-space: normal; /* ✅ Umbrechen erlaubt */
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* Max 2 Zeilen */
+    min-height: 1.3em;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
   }
 
+<<<<<<< HEAD
   .card-info p {
     margin: 0;
     color: rgba(255, 220, 100, 0.85) !important;
@@ -220,23 +305,30 @@
     -webkit-box-orient: vertical;
   }
 
+=======
+>>>>>>> 67c3b75b0dd25f93532c6252e12485c84cac0e32
   .card-meta {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    gap: 8px;
-    margin-top: 4px;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .tag {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
     background: rgba(230, 168, 0, 0.2);
     color: #f9c932 !important;
-    padding: 4px 10px;
+    padding: 3px 10px;
+    line-height: 1.3;
     border-radius: 12px;
     font-size: 0.72rem;
     font-weight: 600;
     border: 1px solid rgba(230, 168, 0, 0.25);
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .lieferzeit {

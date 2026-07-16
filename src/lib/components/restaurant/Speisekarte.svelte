@@ -20,14 +20,14 @@
     zumWarenkorb(gericht, restaurant.name, anzahl);
 
     if (onHinweis) {
-      onHinweis(`${anzahl}× ${gericht.name} hinzugefügt ✅`);
+      onHinweis(`${anzahl}× ${gericht.name} hinzugefügt`);
     }
 
     mengen = { ...mengen, [gericht.id]: 1 };
   }
 </script>
 
-<h2>📋 Speisekarte</h2>
+<h2>Speisekarte</h2>
 
 <div class="speisekarte">
   {#each restaurant.speisekarte as gericht}
@@ -54,25 +54,37 @@
           <button onclick={() => aendere(gericht.id, 1)} aria-label="Mehr">+</button>
         </div>
 
-        <button class="add-btn" onclick={() => hinzufuegen(gericht)}>+ Hinzufügen</button>
+        <button class="add-btn" onclick={() => hinzufuegen(gericht)}>Hinzufügen</button>
       </div>
     </article>
   {/each}
 </div>
 
 <style>
+h2 {
+  margin: 0 0 18px;
+  font-size: 1.25rem;
+}
+
 .speisekarte {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 20px;
 }
 
 .gericht {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 18px;
-  padding: 18px;
+  gap: 24px;
+  padding: 24px;
+  border-radius: 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gericht:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .gericht-info {
@@ -82,28 +94,30 @@
 .gericht-info h3 {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  margin: 0 0 6px;
+  margin: 0 0 8px;
+  font-size: 1.05rem;
 }
 
 .gericht-desc {
   color: rgba(245, 240, 232, 0.68);
   font-size: 0.9rem;
-  line-height: 1.45;
-  margin: 0 0 8px;
+  line-height: 1.5;
+  margin: 0 0 10px;
 }
 
 .allergene {
   color: rgba(245, 240, 232, 0.42);
   font-size: 0.78rem;
-  margin: 0 0 8px;
+  margin: 0 0 10px;
 }
 
 .preis {
   display: inline-flex;
   color: #f9c932;
   font-weight: 800;
+  font-size: 1.05rem;
   font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
 }
 
@@ -111,7 +125,7 @@
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 3px 9px;
+  padding: 3px 10px;
   background: rgba(99, 212, 113, 0.12);
   border: 1px solid rgba(99, 212, 113, 0.28);
   color: #8ff09a;
@@ -123,7 +137,7 @@
 .gericht-aktion {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 12px;
   align-items: flex-end;
   flex-shrink: 0;
 }
@@ -131,7 +145,7 @@
 .stepper {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   padding: 5px;
   border-radius: 999px;
   background: rgba(255, 248, 220, 0.06);
@@ -176,6 +190,7 @@
   .gericht {
     align-items: stretch;
     flex-direction: column;
+    padding: 20px;
   }
 
   .gericht-aktion {

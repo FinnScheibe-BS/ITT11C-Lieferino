@@ -78,31 +78,25 @@
 
     <div class="nav-links">
       <a href="/" onclick={menuSchliessen} class="nav-link">
-        <span class="nav-icon">⌂</span>
         {$t('nav.home')}
       </a>
       <a href="/restaurants" onclick={menuSchliessen} class="nav-link">
-        <span class="nav-icon">🍽</span>
         {$t('nav.restaurants')}
       </a>
       <a href="/cart" onclick={menuSchliessen} class="nav-link cart-link-item">
-        <span class="nav-icon">🛒</span>
         {$t('nav.cart')}
         {#if anzahl > 0}
           <span class="nav-cart-badge">{anzahl}</span>
         {/if}
       </a>
       <a href="/bestellungen" onclick={menuSchliessen} class="nav-link">
-        <span class="nav-icon">📦</span>
         {$t('nav.orders')}
       </a>
       <a href="/account" onclick={menuSchliessen} class="nav-link">
-        <span class="nav-icon">👤</span>
         {$t('nav.account')}
       </a>
       {#if !$eingeloggt}
         <a href="/login" onclick={menuSchliessen} class="nav-link">
-          <span class="nav-icon">🔑</span>
           {$t('nav.login')}
         </a>
       {:else}
@@ -112,7 +106,6 @@
         </button>
       {/if}
       <a href="/admin" onclick={menuSchliessen} class="nav-link">
-        <span class="nav-icon">⚙</span>
         {$t('nav.admin')}
       </a>
     </div>
