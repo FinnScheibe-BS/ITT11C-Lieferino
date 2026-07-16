@@ -4,16 +4,28 @@
   import { bewertungen } from '$lib/stores/bewertungen.js';
   import { t } from '$lib/utils/i18n.js';
   import { onMount } from 'svelte';
+<<<<<<< HEAD
  
   let gewaehlterTyp = $state('alle');
   let sortierung = $state('standard');
   let suche = $state('');
  
+=======
+
+  let gewaehlterTyp = $state('alle');
+  let sortierung = $state('standard');
+  let suche = $state('');
+
+>>>>>>> 407a6ebd4f3f43b182c45ab53f596dbe0b754e17
   // Holt die Daten live aus der API, sobald die Seite lädt
   onMount(async () => {
     const daten = await holeRestaurants();
     if (daten && daten.length > 0) {
+<<<<<<< HEAD
       $aktiveRestaurants = daten;
+=======
+      $aktiveRestaurants = daten; 
+>>>>>>> 407a6ebd4f3f43b182c45ab53f596dbe0b754e17
     }
   });
  
@@ -67,7 +79,11 @@
     {#each gefilterteRestaurants as r}
       <a href="/restaurant/{r.slug}" class="restaurant-card karte">
         <span class="emoji-bild">{r.emoji}</span>
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> 407a6ebd4f3f43b182c45ab53f596dbe0b754e17
         <!-- Text unten -->
         <div class="card-info">
           <p>{r.beschreibung}</p>
@@ -130,7 +146,11 @@
     min-width: 140px;
     cursor: pointer;
   }
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> 407a6ebd4f3f43b182c45ab53f596dbe0b754e17
   .treffer {
     color: rgba(245, 240, 232, 0.6);
     font-size: 0.85rem;
@@ -147,7 +167,11 @@
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 24px;
   }
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> 407a6ebd4f3f43b182c45ab53f596dbe0b754e17
   .restaurant-card {
     aspect-ratio: 4 / 3;
     display: block;
@@ -157,7 +181,11 @@
     overflow: hidden;
     --textbox-h: 100px; /* Etwas höher für besseren Textplatz */
   }
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> 407a6ebd4f3f43b182c45ab53f596dbe0b754e17
   .emoji-bild {
     position: absolute;
     top: 0;
@@ -176,7 +204,11 @@
   .restaurant-card:hover .emoji-bild {
     transform: scale(1.08);
   }
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> 407a6ebd4f3f43b182c45ab53f596dbe0b754e17
   .card-info {
     position: absolute;
     bottom: 0;

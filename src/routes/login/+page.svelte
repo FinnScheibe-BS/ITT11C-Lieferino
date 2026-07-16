@@ -4,7 +4,11 @@
   import { api } from '$lib/api/api.js';
   import { t } from '$lib/utils/i18n.js';
   import AuthVollenden from '$lib/components/auth/AuthVollenden.svelte';
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> 407a6ebd4f3f43b182c45ab53f596dbe0b754e17
   // 'login' = E-Mail+Passwort. 'weiter' = Code/MFA über die AuthVollenden-Komponente.
   let schritt = $state('login');
  

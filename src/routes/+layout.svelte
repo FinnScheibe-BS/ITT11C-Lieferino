@@ -1,19 +1,26 @@
 <script>
-  import "../app.css";
+  import '../app.css';
   import 'geist-svelte/font/sans';
   import 'geist-svelte/font/mono';
+
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+
   import { warenkorb } from '$lib/stores/cart.js';
   import { theme, themeWechseln } from '$lib/stores/theme.js';
   import { t, sprache, setzeSprache, SPRACHEN } from '$lib/utils/i18n.js';
   import { eingeloggt, logout } from '$lib/stores/auth.js';
-  import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
 
   let anzahl = $state(0);
   let warenkorbSumme = $state(0);
   let menuOffen = $state(false);
 
-  function menuSchliessen() { menuOffen = false; }
+  let istHomepage = $derived($page.route.id === '/' || $page.url.pathname === '/');
+
+  function menuSchliessen() {
+    menuOffen = false;
+  }
 
   function ausloggen() {
     logout();
@@ -30,10 +37,11 @@
   }
 
   onMount(() => {
-    const unsub = warenkorb.subscribe(v => {
+    const unsub = warenkorb.subscribe((v) => {
       anzahl = v?.length ?? 0;
       berechneSumme();
     });
+
     return () => {
       unsub();
     };
