@@ -29,49 +29,37 @@
   let hinweis = $state('');
   let hinweisTimer;
 
+  // Restaurant finden oder nachladen
   onMount(async () => {
-    console.log('🔍 START - Slug:', slug);
-    console.log('📦 Store vor Load:', $aktiveRestaurants?.length ?? 0, 'Restaurants');
+    ladezustand = 'loading';
     
-    try {
-      // Erst im Store suchen
-      restaurant = findeRestaurant(slug);
-      console.log('✅ Im Store gefunden:', restaurant?.name ?? 'NEIN');
+    // Erst im Store suchen
+    restaurant = findeRestaurant(slug);
+    
+    // Wenn nicht gefunden, alle Restaurants nachladen
+    if (!restaurant) {
+      console.log('Restaurant nicht im Store, lade nach...', slug);
+      const alle = await ladeRestaurants();
+      restaurant = alle.find(r => r.slug === slug);
       
-      // Wenn nicht gefunden, nachladen
+      // Fallback: Nach Name suchen falls Slug nicht matcht
       if (!restaurant) {
-        console.log('⏳ Lade Restaurants nach...');
-        const alle = await ladeRestaurants();
-        console.log('📥 Nachgeladen:', alle.length, 'Restaurants');
-        
-        restaurant = alle.find(r => r.slug === slug);
-        console.log('✅ Nach Laden gefunden:', restaurant?.name ?? 'NEIN');
-        
-        // Fallback: Slug generieren und vergleichen
-        if (!restaurant) {
-          const slugFromName = nameToSlug(slug.replace(/-/g, ' '));
-          restaurant = alle.find(r => nameToSlug(r.name) === slug);
-          console.log('✅ Fallback-Suche:', restaurant?.name ?? 'NEIN');
-        }
+        restaurant = alle.find(r => 
+          erstelleSlug(r.name) === slug || 
+          r.name.toLowerCase().includes(slug.replace(/-/g, ' '))
+        );
       }
-      
-      // Gerichte laden wenn Restaurant gefunden
-      if (restaurant?.id) {
-        console.log('🍽️ Lade Gerichte für Restaurant ID:', restaurant.id);
-        await ladeSpeisen(restaurant.id);
-        console.log('✅ Gerichte geladen:', $speisen[restaurant.id]?.length ?? 0);
-      }
-      
-      ladezustand = restaurant ? 'ready' : 'not_found';
-      console.log('🏁 ENDE - Zustand:', ladezustand);
-      
-    } catch (error) {
-      console.error('❌ FEHLER im onMount:', error);
-      ladezustand = 'error';
     }
+    
+    // Gerichte laden wenn Restaurant gefunden
+    if (restaurant?.id) {
+      await ladeSpeisen(restaurant.id);
+    }
+    
+    ladezustand = restaurant ? 'ready' : 'not_found';
   });
 
-  function nameToSlug(name) {
+  function erstelleSlug(name) {
     return name
       .toLowerCase()
       .replace(/ä/g, 'ae')
@@ -87,22 +75,14 @@
   <div class="seite">
     <div class="ladezustand karte">
       <p>🍽️ Restaurant wird geladen...</p>
-      <p class="debug">Slug: {slug}</p>
-    </div>
-  </div>
-{:else if ladezustand === 'error'}
-  <div class="seite">
-    <div class="fehler-zustand karte">
-      <h1>😕 Fehler beim Laden</h1>
-      <p>Bitte prüfe die Browser-Console (F12)</p>
-      <a href="/restaurants" class="zurueck">⬅️ Zu allen Restaurants</a>
     </div>
   </div>
 {:else if restaurant}
-  <!-- Normale Restaurant-Anzeige -->
   <div class="seite">
     <a href="/restaurants" class="zurueck">⬅️ Zu allen Restaurants</a>
+
     <RestaurantHeader {restaurant} {slug} {geoeffnet} />
+
     <Speisekarte
       restaurant={{ ...restaurant, speisekarte: gerichte }}
       onHinweis={(text) => {
@@ -111,8 +91,10 @@
         hinweisTimer = setTimeout(() => (hinweis = ''), 2000);
       }}
     />
+
     <Bewertungen {restaurant} {slug} />
   </div>
+
   {#if hinweis}
     <div class="toast">{hinweis}</div>
   {/if}
@@ -127,16 +109,9 @@
 {/if}
 
 <style>
-  .ladezustand, .fehler-zustand {
+  .ladezustand {
     padding: 48px 24px;
     text-align: center;
-  }
-  .debug {
-    font-size: 0.8rem;
-    opacity: 0.5;
-    margin-top: 8px;
-  }
-  .fehler-zustand {
-    color: #ff6b6b;
+    opacity: 0.7;
   }
 </style>
