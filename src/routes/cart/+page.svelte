@@ -114,12 +114,12 @@
   .leer { text-align: center; padding: 40px; color: #777; }
 
   .gruppe { margin-bottom: 18px; }
-  .gruppe-titel { font-size: 1.05rem; margin: 0 0 8px; color: #673ab7; }
+  .gruppe-titel { font-size: 1.05rem; margin: 0 0 8px; color: #EFBF04; }
   .liste { display: flex; flex-direction: column; gap: 10px; }
   .zeile { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 16px; background: white; border: 1px solid #eee; border-radius: 14px; padding: 14px; }
   .info h3 { margin: 0 0 2px; }
   .herkunft { color: #999; font-size: 0.8rem; margin: 0 0 4px; }
-  .preis { color: #673ab7; font-weight: bold; font-size: 0.9rem; }
+  .preis { color: #EFBF04; font-weight: bold; font-size: 0.9rem; }
 
   .menge { display: flex; align-items: center; gap: 10px; }
   .menge button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #ddd; background: #f7f7f7; font-size: 1.1rem; cursor: pointer; }
@@ -134,7 +134,7 @@
 
   .warnung { color: #d97706; font-size: 0.9rem; font-weight: 600; margin: 12px 0; }
 
-  .btn { display: inline-block; background: #673ab7; color: white; text-decoration: none; padding: 14px 22px; border-radius: 12px; font-weight: bold; text-align: center; }
+  .btn { display: inline-block; background: #EFBF04; color: white; text-decoration: none; padding: 14px 22px; border-radius: 12px; font-weight: bold; text-align: center; }
   .checkout-btn { width: 100%; box-sizing: border-box; margin-top: 10px; }
   /* Gesperrter Button: ausgegraut und nicht klickbar */
   .gesperrt { opacity: 0.5; pointer-events: none; }

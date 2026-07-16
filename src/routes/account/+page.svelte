@@ -256,15 +256,6 @@
         {/if}
       </div>
 
-      <!-- ⭐ TREUEPUNKTE -->
-      <div class="category-section">
-        <div class="category-header">
-          <h3 class="category-title">{$t('acc.points_title')}</h3>
-        </div>
-        <p class="punkte-zahl">{$t('acc.points_n').replace('{n}', $treuepunkte)}</p>
-        <p class="punkte-hint">{$t('acc.points_hint')}</p>
-      </div>
-
       <!-- 📍 WEITERE ADRESSEN -->
       <div class="category-section">
         <div class="category-header">
@@ -294,22 +285,6 @@
           <button type="submit" class="save-group-btn">{$t('acc.add_address')}</button>
         </form>
       </div>
-
-      <!-- 🔐 ZWEI-FAKTOR-AUTHENTIFIZIERUNG -->
-      <div class="category-section">
-        <div class="category-header">
-          <h3 class="category-title">{$t('acc.mfa_title')}</h3>
-        </div>
-
-        {#if user.mfaAktiv}
-          <p class="mfa-status an">{$t('acc.mfa_active')}</p>
-        {:else}
-          <p class="mfa-status aus">{$t('acc.mfa_inactive')}</p>
-        {/if}
-        <p class="mfa-info">{$t('acc.mfa_info')}</p>
-      </div>
-
-      <button onclick={ausloggen} class="logout-btn">{$t('acc.logout')}</button>
 
       <!-- 🗑️ Konto löschen (Gefahrenzone) -->
       {#if !loeschBestaetigung}

@@ -3,7 +3,7 @@
   import { warenkorb, gesamtSumme, leereWarenkorb } from '$lib/stores/cart.js';
   import { pruefeKarte, kartenTyp, formatiereNummer } from '$lib/services/payment.js';
   import { treuepunkte, ladeTreuepunkte, EINLOESE_SCHRITT, EINLOESE_WERT } from '$lib/stores/treue.js';
-  import { api, getToken } from '$lib/api.js';
+  import { api, getToken } from '$lib/api/api.js';
 
   const LIEFERGEBUEHR = 2.49;
 
@@ -451,20 +451,6 @@
       <p class="gutschein-tipp">💡 Versuch's mal mit <strong>LIEFERINO10</strong>, <strong>WILLKOMMEN5</strong> oder <strong>GRATIS</strong>.</p>
     </section>
 
-    <!-- ⭐ Treuepunkte -->
-    <section class="block">
-      <h2>Treuepunkte ⭐</h2>
-      <p class="punkte-stand">Du hast <strong>{$treuepunkte}</strong> Punkte.</p>
-      {#if $treuepunkte >= EINLOESE_SCHRITT}
-        <label class="punkte-einloesen">
-          <input type="checkbox" bind:checked={punkteEinloesen} />
-          {EINLOESE_SCHRITT} Punkte einlösen (−{EINLOESE_WERT.toFixed(2)}€)
-        </label>
-      {:else}
-        <p class="gutschein-tipp">Ab {EINLOESE_SCHRITT} Punkten kannst du {EINLOESE_WERT}€ Rabatt einlösen. (1 Punkt je 1€ Bestellwert)</p>
-      {/if}
-    </section>
-
     <!-- 📦 Bestellübersicht -->
     <section class="block">
       <h2>Deine Bestellung</h2>
@@ -522,7 +508,7 @@
 
   .zahlung-optionen { display: flex; flex-direction: column; gap: 10px; }
   .zahlung-optionen label { border: 1px solid #ddd; border-radius: 12px; padding: 12px; cursor: pointer; }
-  .zahlung-optionen label.aktiv { border-color: #673ab7; background: #faf7ff; }
+  .zahlung-optionen label.aktiv { border-color: #673ab7; background: #faf7ff; color: #111111; }
 
   .uebersicht-zeile { display: flex; justify-content: space-between; margin-bottom: 8px; color: #555; }
   .uebersicht-zeile.gesamt { font-weight: bold; color: #222; border-top: 1px solid #ddd; padding-top: 10px; font-size: 1.15rem; }
@@ -556,13 +542,9 @@
   /* ⏰ Lieferzeit + Adresswahl */
   .zeit-optionen { display: flex; flex-direction: column; gap: 10px; }
   .zeit-optionen label { border: 1px solid #ddd; border-radius: 12px; padding: 12px; cursor: pointer; }
-  .zeit-optionen label.aktiv { border-color: #673ab7; background: #faf7ff; }
+  .zeit-optionen label.aktiv { border-color: #673ab7; background: #faf7ff; color: #111111; }
   .zeit-feld { margin-top: 12px; padding: 11px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; }
   .adress-wahl { width: 100%; padding: 11px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 12px; }
-
-  /* ⭐ Treuepunkte */
-  .punkte-stand { color: #555; }
-  .punkte-einloesen { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #673ab7; cursor: pointer; }
 
   /* 🧾 Druckbare Rechnung: am Bildschirm versteckt, nur beim Drucken sichtbar */
   .rechnung-druck { display: none; }

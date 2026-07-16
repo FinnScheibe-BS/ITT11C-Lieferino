@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { api, getToken } from '$lib/api.js';
-  import { t } from '$lib/i18n.js';
+  import { api, getToken } from '$lib/api/api.js';
+  import { t } from '$lib/utils/i18n.js';
 
   // 🚚 LIVE-TRACKING der zuletzt aufgegebenen Bestellung.
   // Eingeloggt: der Status kommt SERVERSEITIG (manipulationssicher) vom Backend.
