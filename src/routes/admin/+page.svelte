@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { api, getToken } from '$lib/api.js';
+  import { api, getToken } from '$lib/api/api.js';
 
   // 🛠️ ADMIN-DASHBOARD – läuft jetzt komplett über das Backend (mit Admin-Rechten).
   // Zugang nur für den Admin-Nutzer (Konto mit der konfigurierten Admin-E-Mail).
