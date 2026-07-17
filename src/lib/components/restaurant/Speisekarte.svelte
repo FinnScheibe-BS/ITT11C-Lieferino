@@ -23,11 +23,11 @@
     }
   }
 
-  // Diese Funktion ignoriert bild_url und baut die URL sauber über den Namen auf
+  // Diese Version ersetzt Leerzeichen UND Bindestriche durch %20
   function bildUrl(gericht) {
     if (!gericht || !gericht.name) return '';
     
-    // 1. Dateiendung aus der alten bild_url auslesen (default: png)
+    // 1. Dateiendung exakt aus dem JSON-Wert auslesen (default: png)
     let endung = 'png'; 
     if (gericht.bild_url) {
       const match = gericht.bild_url.match(/\.([a-zA-Z0-9]+)$/);
@@ -36,11 +36,15 @@
       }
     }
     
-    // 2. Dateiname aus dem echten Namen und der Endung zusammenbauen
+    // 2. Name mit der originalen Endung zusammenbauen
     const dateiname = `${gericht.name}.${endung}`;
     
-    // 3. encodeURIComponent wandelt Leerzeichen in %20 und Sonderzeichen (z.B. &) perfekt um
-    return `http://172.30.4.90:8080/uploads/gerichte/${encodeURIComponent(dateiname)}`;
+    // 3. Erst Bindestriche durch Leerzeichen ersetzen, dann alle Leerzeichen zu %20 machen
+    const sichererDateiname = dateiname
+      .replace(/-/g, ' ')  // Ersetzt Bindestriche durch Leerzeichen
+      .replace(/ /g, '%20'); // Wandelt alle Leerzeichen in %20 um
+    
+    return `http://172.30.4.90:8080/uploads/gerichte/${sichererDateiname}`;
   }
 </script>
 
