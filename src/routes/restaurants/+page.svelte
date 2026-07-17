@@ -9,11 +9,10 @@
   let sortierung = $state('standard');
   let suche = $state('');
 
-  // Holt die Daten live aus der API, sobald die Seite lädt
   onMount(async () => {
     const daten = await holeRestaurants();
     if (daten && daten.length > 0) {
-      $aktiveRestaurants = daten; 
+      $aktiveRestaurants = daten;
     }
   });
 
@@ -39,7 +38,7 @@
 </script>
 
 <div class="seite">
-  <div class="hero-box karte">
+  <div class="header-bereich">
     <h1>{$t('rest.title')}</h1>
     <p>{$t('rest.subtitle')}</p>
   </div>
@@ -67,6 +66,12 @@
     {#each gefilterteRestaurants as r}
       <a href="/restaurant/{r.slug}" class="restaurant-card">
         <div class="card-bild">
+          <!-- Bewertungs-Tag rechts oben -->
+          <div class="bewertung-badge">
+            <span class="stern">⭐️</span>
+            <span class="bewertung-wert">{anzeigeBewertung(r).toFixed(1)}</span>
+          </div>
+          
           <span class="emoji-bild">{r.emoji}</span>
         </div>
 
@@ -92,24 +97,28 @@
     padding: 24px 20px 48px;
   }
 
-  .hero-box {
+  .header-bereich {
     text-align: center;
-    padding: 48px 24px;
+    padding: 64px 24px 40px;
     margin-bottom: 24px;
-    background: linear-gradient(135deg, rgba(230, 168, 0, 0.15), rgba(184, 124, 0, 0.10));
   }
 
-  .hero-box h1 {
+  .header-bereich h1 {
     margin: 0 0 12px;
-    font-size: clamp(1.8rem, 5vw, 2.5rem);
+    font-size: clamp(3rem, 7vw, 4.5rem);
     font-weight: 700;
     letter-spacing: -0.03em;
+    color: #f9c932;
+    text-shadow: 0 2px 12px rgba(230, 168, 0, 0.4);
   }
 
-  .hero-box p {
+  .header-bereich p {
     margin: 0;
-    opacity: 0.85;
-    font-size: 1.05rem;
+    opacity: 0.75;
+    font-size: 1.15rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .filter-bar {
@@ -149,8 +158,6 @@
     align-items: stretch;
   }
 
-  /* Eigenständige Card, bewusst NICHT über .karte gestylt, damit keine
-     fremden display/align-items/padding-Regeln das Layout hier kaputt machen. */
   .restaurant-card {
     display: flex !important;
     flex-direction: column !important;
@@ -162,29 +169,65 @@
     border-radius: 16px;
     background: #1c1710;
     border: 1px solid rgba(230, 168, 0, 0.15);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
   }
 
-  /* Bildbereich: eigene, feste Höhe – kein Overlay, kein Absolute-Positioning. */
+  .restaurant-card:hover {
+    border-color: rgba(230, 168, 0, 0.4);
+    box-shadow: 0 8px 24px rgba(230, 168, 0, 0.15);
+  }
+
   .card-bild {
     position: relative;
     width: 100%;
-    height: 222px;
-    flex: 0 0 222px !important;
+    height: 250px;
+    flex: 0 0 250px !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     background: radial-gradient(circle at 50% 40%, rgba(230, 168, 0, 0.12), rgba(0, 0, 0, 0) 70%);
+    z-index: 1;
   }
 
-  /* Verlauf/Blur nimmt 2/5 der Bildhöhe ein, sauber innerhalb des Bildes. */
+  /* Bewertungs-Badge rechts oben */
+  .bewertung-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 20px;
+    border: 1px solid rgba(230, 168, 0, 0.3);
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  .bewertung-badge .stern {
+    font-size: 0.9rem;
+    line-height: 1;
+  }
+
+  .bewertung-badge .bewertung-wert {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f9c932;
+    line-height: 1;
+  }
+
   .card-bild::after {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 40%;
+    height: 30%;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     background: linear-gradient(
@@ -197,14 +240,12 @@
     pointer-events: none;
   }
 
-  /* Dünne Trennlinie mit leichtem Glow/Layer-Effekt genau am oberen Rand
-     des Verlaufs. */
   .card-bild::before {
     content: '';
     position: absolute;
     left: 16px;
     right: 16px;
-    bottom: 40%;
+    bottom: 30%;
     height: 1px;
     background: linear-gradient(
       to right,
@@ -222,20 +263,21 @@
     line-height: 1;
     filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
     transition: transform 0.3s ease;
+    position: relative;
+    z-index: 10;
   }
 
   .restaurant-card:hover .emoji-bild {
     transform: scale(1.08);
   }
 
-  /* Textbereich: normaler Blockfluss darunter, wächst mit dem Inhalt statt zu überlappen */
   .card-info {
     width: 100%;
     flex: 1 1 auto !important;
     min-height: 64px;
     box-sizing: border-box;
     padding: 6px 16px 18px;
-    margin-top: -14px;
+    margin-top: -6px;
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
@@ -245,7 +287,7 @@
     z-index: 3;
   }
 
-  .card-info h2 {
+  .card-info h3 {
     width: 100%;
     margin: 0 !important;
     padding: 0 !important;
@@ -261,6 +303,7 @@
     display: -webkit-box !important;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   }
 
   .card-meta {
