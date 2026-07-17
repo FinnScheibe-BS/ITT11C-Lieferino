@@ -135,15 +135,6 @@
   </div>
 </nav>
 
-<button
-  class="theme-btn"
-  onclick={themeWechseln}
-  title="Hell/Dunkel"
-  aria-label="Hell/Dunkel umschalten"
->
-  {$theme === 'dark' ? '☀️' : '🌙'}
-</button>
-
 <a href="/cart" class="cart-fab" title="Warenkorb" aria-label="Zum Warenkorb">
   🛒
   {#if anzahl > 0}
