@@ -6,9 +6,17 @@
 const API_BASE = 'http://172.30.4.90:8080';
 
 /**
- * Registriert einen neuen Nutzer beim Backend.
- * @param {{ email: string, passwort: string, vorname: string, nachname: string, geburtsdatum: string }} daten
- * @returns {Promise<{ ok: boolean, status: number, daten: any, offline: boolean }>}
+ * @param {{ 
+ *   Vorname: string, 
+ *   Nachname: string, 
+ *   Telefonnummer: string, 
+ *   Email_Adresse: string, 
+ *   Passwort: string, 
+ *   Strasse: string, 
+ *   Hausnummer: string, 
+ *   PLZ: string, 
+ *   Ort: string 
+ * }} daten
  */
 export async function registriere(daten) {
   try {

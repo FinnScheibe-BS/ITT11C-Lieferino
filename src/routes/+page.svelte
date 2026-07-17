@@ -4,6 +4,7 @@
   import { pruefePasswortStaerke } from '$lib/services/passwort.js';
   import { pruefeAdresse } from '$lib/services/adresse.js';
   import { api } from '$lib/api/api.js';
+  import { registriere } from '$lib/api/register.js';
   import AuthVollenden from '$lib/components/auth/AuthVollenden.svelte';
   import { aktiveRestaurants } from '$lib/stores/lieferanten.js';
   import { bewertungsSchnitt } from '$lib/stores/bewertungsSchnitt.js';
@@ -150,16 +151,17 @@
     registrierFehler = "";
     registrierAnforderungen = [];
     try {
-      const reg = await api('/api/auth/register', {
-        method: 'POST',
-        body: {
-          email: emailInput,
-          passwort: passwortInput,
-          vorname: vornameInput,
-          nachname: nachnameInput,
-          geburtsdatum: geburtsdatumInput
-        }
-      });
+    const reg = await registriere({
+      Vorname: vornameInput,
+      Nachname: nachnameInput,
+      Telefonnummer: "", // Falls du kein Input hast, leerer String (oder füge ein Input hinzu)
+      Email_Adresse: emailInput,
+      Passwort: passwortInput,
+      Strasse: strasseInput,
+      Hausnummer: hausnummerInput,
+      PLZ: plzInput,
+      Ort: ortInput
+  });
       if (reg.ok && reg.daten?.needsVerification) {
         zeigeAbschluss = true;
         return;
@@ -181,8 +183,16 @@
       await api('/api/me', {
         method: 'PUT',
         body: {
-          vorname: vornameInput, nachname: nachnameInput, geburtsdatum: geburtsdatumInput,
-          adressen: [{ label: 'Zuhause', strasse: strasseInput, hausnummer: hausnummerInput, plz: plzInput, ort: ortInput }]
+          Vorname: vornameInput, 
+          Nachname: nachnameInput, 
+          Geburtsdatum: geburtsdatumInput,
+          Adressen: [{ 
+            label: 'Zuhause', 
+            Strasse: strasseInput, 
+            Hausnummer: hausnummerInput, 
+            PLZ: plzInput, 
+            Ort: ortInput 
+          }]
         }
       });
       login();

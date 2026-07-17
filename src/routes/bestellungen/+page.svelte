@@ -1,7 +1,7 @@
 <script>
   import { goto } from '$app/navigation';
   import { warenkorb } from '$lib/stores/cart.js';
-  import { api, getToken } from '$lib/api/api.js';
+  import { holeBestellungen } from '$lib/api/bestellung.js';
 
   // 🧾 BESTELLVERLAUF
   // Liest die früheren Bestellungen aus dem localStorage (werden beim Checkout
@@ -30,8 +30,7 @@
 
     // 🗄️ Falls eingeloggt: echte Bestellungen aus dem Backend (DB) nachladen.
     (async () => {
-      if (!getToken()) return;
-      const res = await api('/api/orders');
+      const res = await holeBestellungen();
       if (res.ok && Array.isArray(res.daten)) {
         // Backend liefert "positionen"; die Anzeige nutzt "artikel".
         bestellungen = res.daten.map((o) => ({ ...o, artikel: o.positionen || [] }));
