@@ -25,27 +25,35 @@
 
   // Diese Version ersetzt Leerzeichen UND Bindestriche durch %20
   function bildUrl(gericht) {
-    if (!gericht || !gericht.name) return '';
-    
-    // 1. Dateiendung exakt aus dem JSON-Wert auslesen (default: png)
-    let endung = 'png'; 
-    if (gericht.bild_url) {
-      const match = gericht.bild_url.match(/\.([a-zA-Z0-9]+)$/);
-      if (match) {
-        endung = match[1];
-      }
+  if (!gericht || !gericht.name) return '';
+  
+  // 1. Dateiendung exakt aus dem JSON-Wert auslesen (default: png)
+  let endung = 'png';
+  if (gericht.bild_url) {
+    const match = gericht.bild_url.match(/\.([a-zA-Z0-9]+)$/);
+    if (match) {
+      endung = match[1];
     }
-    
-    // 2. Name mit der originalen Endung zusammenbauen
-    const dateiname = `${gericht.name}.${endung}`;
-    
-    // 3. Erst Bindestriche durch Leerzeichen ersetzen, dann alle Leerzeichen zu %20 machen
-    const sichererDateiname = dateiname
-      .replace(/-/g, ' ')  // Ersetzt Bindestriche durch Leerzeichen
-      .replace(/ /g, '%20'); // Wandelt alle Leerzeichen in %20 um
-    
-    return `http://172.30.4.90:8080/uploads/gerichte/${sichererDateiname}`;
   }
+  
+  // 2. Name mit der originalen Endung zusammenbauen
+  const dateiname = `${gericht.name}.${endung}`;
+  
+  // 3. Nur Umlaute ersetzen – s und ß bleiben wie sie sind
+  const mitUmlautenErsetzt = dateiname
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/Ä/g, 'Ae')
+    .replace(/Ö/g, 'Oe')
+    .replace(/Ü/g, 'Ue');
+  
+  // 4. NUR Leerzeichen zu %20 machen – Bindestriche bleiben!
+  const sichererDateiname = mitUmlautenErsetzt
+    .replace(/ /g, '%20');
+    
+  return `http://172.30.4.90:8080/uploads/gerichte/${sichererDateiname}`;
+}
 </script>
 
 <h2>Speisekarte</h2>
