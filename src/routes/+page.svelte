@@ -148,16 +148,14 @@
       geburtsdatum: geburtsdatumInput
     };
     localStorage.setItem("lieferino_user", JSON.stringify(userDaten));
-<<<<<<< HEAD
+
 
     registrierFehler = "";
     registrierAnforderungen = [];
 
     // 6. API Call
-=======
     registrierFehler = "";
     registrierAnforderungen = [];
->>>>>>> 255edc14837ed29b8c28361128961271edd10f95
     try {
       const reg = await registriere({
         email: emailInput,
@@ -538,7 +536,6 @@
 /* ════════════════════════════════════════════════════════════════
      DESIGN TOKENS
      ════════════════════════════════════════════════════════════════ */
-<<<<<<< HEAD
   :root {
     --g1: #e6a800;
     --g2: #b87c00;
