@@ -32,30 +32,33 @@
 <div class="speisekarte">
   {#each restaurant.speisekarte as gericht}
     <article class="gericht">
-      <div class="gericht-info">
-        <h3>
-          {gericht.name}
-          {#if gericht.veg}<span class="veg-tag">🌱 vegetarisch</span>{/if}
-        </h3>
-
-        <p class="gericht-desc">{gericht.beschreibung}</p>
-
-        {#if gericht.allergene && gericht.allergene.length > 0}
-          <p class="allergene">Enthält: {gericht.allergene.join(', ')}</p>
-        {/if}
-
+      <header class="gericht-kopf">
+        <h3>{gericht.name}</h3>
         <span class="preis">{gericht.preis.toFixed(2)}€</span>
+      </header>
+
+      <p class="gericht-desc">{gericht.beschreibung}</p>
+
+      <div class="gericht-tags">
+        {#if gericht.veg}
+          <span class="veg-tag">🌱 vegetarisch</span>
+        {/if}
+        {#if gericht.allergene && gericht.allergene.length > 0}
+          <span class="allergene">Enthält: {gericht.allergene.join(', ')}</span>
+        {/if}
       </div>
 
-      <div class="gericht-aktion">
+      <footer class="gericht-fuss">
         <div class="stepper" aria-label="Menge auswählen">
           <button onclick={() => aendere(gericht.id, -1)} aria-label="Weniger">−</button>
           <span>{menge(gericht.id)}</span>
           <button onclick={() => aendere(gericht.id, 1)} aria-label="Mehr">+</button>
         </div>
 
-        <button class="add-btn" onclick={() => hinzufuegen(gericht)}>Hinzufügen</button>
-      </div>
+        <button class="add-btn" onclick={() => hinzufuegen(gericht)}>
+          Hinzufügen
+        </button>
+      </footer>
     </article>
   {/each}
 </div>
@@ -69,56 +72,52 @@ h2 {
 .speisekarte {
   display: flex;
   flex-direction: column;
-  gap: 20px;
 }
 
 .gericht {
+  display: grid;
+  gap: 8px;
+  padding: 22px 4px;
+  border-bottom: 1px solid rgba(230, 168, 0, 0.12);
+}
+
+.gericht:last-child {
+  border-bottom: none;
+}
+
+.gericht-kopf {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  padding: 24px;
-  border-radius: 16px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  align-items: baseline;
+  gap: 16px;
 }
 
-.gericht:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-}
-
-.gericht-info {
-  min-width: 0;
-}
-
-.gericht-info h3 {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin: 0 0 8px;
+.gericht-kopf h3 {
+  margin: 0;
   font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.preis {
+  flex-shrink: 0;
+  color: #f9c932;
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
 }
 
 .gericht-desc {
   color: rgba(245, 240, 232, 0.68);
   font-size: 0.9rem;
   line-height: 1.5;
-  margin: 0 0 10px;
+  margin: 0;
 }
 
-.allergene {
-  color: rgba(245, 240, 232, 0.42);
-  font-size: 0.78rem;
-  margin: 0 0 10px;
-}
-
-.preis {
-  display: inline-flex;
-  color: #f9c932;
-  font-weight: 800;
-  font-size: 1.05rem;
-  font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+.gericht-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .veg-tag {
@@ -134,12 +133,17 @@ h2 {
   font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
 }
 
-.gericht-aktion {
+.allergene {
+  color: rgba(245, 240, 232, 0.42);
+  font-size: 0.78rem;
+}
+
+.gericht-fuss {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
   gap: 12px;
-  align-items: flex-end;
-  flex-shrink: 0;
+  margin-top: 6px;
 }
 
 .stepper {
@@ -174,6 +178,10 @@ h2 {
   white-space: nowrap;
 }
 
+:global(html[data-theme='light']) .gericht {
+  border-bottom-color: rgba(26, 18, 0, 0.08);
+}
+
 :global(html[data-theme='light']) .gericht-desc {
   color: rgba(26, 18, 0, 0.72);
 }
@@ -187,17 +195,8 @@ h2 {
 }
 
 @media (max-width: 680px) {
-  .gericht {
-    align-items: stretch;
-    flex-direction: column;
-    padding: 20px;
-  }
-
-  .gericht-aktion {
-    flex-direction: row;
+  .gericht-fuss {
     justify-content: space-between;
-    align-items: center;
-    width: 100%;
   }
 }
 </style>

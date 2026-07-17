@@ -144,6 +144,13 @@
   {$theme === 'dark' ? '☀️' : '🌙'}
 </button>
 
+<a href="/cart" class="cart-fab" title="Warenkorb" aria-label="Zum Warenkorb">
+  🛒
+  {#if anzahl > 0}
+    <span class="cart-fab-badge">{anzahl}</span>
+  {/if}
+</a>
+
 <div class="page-content">
   <slot />
 </div>
@@ -548,6 +555,52 @@
     border-color: rgba(230, 168, 0, 0.70) !important;
     box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 16px rgba(230,168,0,0.25) !important;
     transform: scale(1.06) !important;
+  }
+
+  .cart-fab {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50% !important;
+    border: 1px solid rgba(230, 168, 0, 0.35) !important;
+    background: rgba(20, 12, 0, 0.70) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: #f9c932 !important;
+    font-size: 1.25rem;
+    cursor: pointer;
+    z-index: 10001;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none !important;
+    transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s !important;
+  }
+
+  .cart-fab:hover {
+    border-color: rgba(230, 168, 0, 0.70) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 16px rgba(230,168,0,0.25) !important;
+    transform: scale(1.06) !important;
+  }
+
+  .cart-fab-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: linear-gradient(135deg, #e6a800, #b87c00);
+    color: #1a0f00;
+    font-size: 11px;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
   }
 
   :global(::-webkit-scrollbar) { width: 6px; height: 6px; }

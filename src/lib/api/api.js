@@ -2,6 +2,7 @@ import { browser } from '$app/environment';
 
 // 🌐 API-CLIENT fürs Go-Backend
 // Basis-URL des Backends.
+// Basis-URL des Backends. In der Entwicklung läuft das Backend (Gin) auf Port 8090.
 export const API_BASE = 'http://172.30.4.90:8080';
 
 // --- JWT-Token (kommt vom Login/Registrierung) ---
