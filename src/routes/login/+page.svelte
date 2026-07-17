@@ -1,14 +1,10 @@
 <script>
   import { goto } from '$app/navigation';
   import { login } from '$lib/stores/auth.js';
-  import { api } from '$lib/api/api.js';
+  import { anmelden } from '$lib/api/login.js';
   import { t } from '$lib/utils/i18n.js';
   import AuthVollenden from '$lib/components/auth/AuthVollenden.svelte';
-<<<<<<< HEAD
- 
-=======
 
->>>>>>> 407a6ebd4f3f43b182c45ab53f596dbe0b754e17
   // 'login' = E-Mail+Passwort. 'weiter' = Code/MFA über die AuthVollenden-Komponente.
   let schritt = $state('login');
  
@@ -30,7 +26,7 @@
     e.preventDefault();
     fehler = '';
     laedt = true;
-    const res = await api('/api/auth/login', { method: 'POST', body: { email: email.trim(), passwort } });
+    const res = await anmelden({ email: email.trim(), passwort });
     laedt = false;
  
     if (res.offline) {
@@ -145,5 +141,3 @@
   .bleiben input { width: auto; }
   .zurueck { background: none; border: none; color: #f9c932; cursor: pointer; font-size: 0.85rem; margin-top: 14px; width: 100%; }
 </style>
- 
- 
