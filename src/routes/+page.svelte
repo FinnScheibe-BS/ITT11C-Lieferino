@@ -23,11 +23,8 @@
   let emailFehler = $state("");
   let prueftEmail = $state(false);
   let agbAkzeptiert = $state(false);
-  let usernameInput = $state("");
   let vornameInput = $state("");
   let nachnameInput = $state("");
-  let zweitnameInput = $state("");
-  let zeigtZweitname = $state(false);
   let geburtsdatumInput = $state("");
   let altersFehler = $state("");
   let namensFehler = $state("");
@@ -68,10 +65,6 @@
     e.preventDefault();
     if (!nameGueltig(vornameInput) || !nameGueltig(nachnameInput)) {
       namensFehler = "Vor- und Nachname brauchen mind. 2 Buchstaben und dürfen keine Zahlen enthalten. ✍️";
-      return;
-    }
-    if (zeigtZweitname && zweitnameInput.trim() !== "" && !nameGueltig(zweitnameInput)) {
-      namensFehler = "Der zweite Name darf keine Zahlen enthalten. ✍️";
       return;
     }
     namensFehler = "";
@@ -145,10 +138,8 @@
     const userDaten = {
       email: emailInput,
       passwort: passwortInput,
-      username: usernameInput,
       vorname: vornameInput,
       nachname: nachnameInput,
-      zweitname: zeigtZweitname ? zweitnameInput : "",
       strasse: strasseInput,
       hausnummer: hausnummerInput,
       plz: plzInput,
@@ -164,7 +155,6 @@
         body: {
           email: emailInput,
           passwort: passwortInput,
-          username: usernameInput,
           vorname: vornameInput,
           nachname: nachnameInput,
           geburtsdatum: geburtsdatumInput
@@ -191,7 +181,7 @@
       await api('/api/me', {
         method: 'PUT',
         body: {
-          username: usernameInput, vorname: vornameInput, nachname: nachnameInput, geburtsdatum: geburtsdatumInput,
+          vorname: vornameInput, nachname: nachnameInput, geburtsdatum: geburtsdatumInput,
           adressen: [{ label: 'Zuhause', strasse: strasseInput, hausnummer: hausnummerInput, plz: plzInput, ort: ortInput }]
         }
       });
@@ -291,26 +281,11 @@
         </form>
       {:else if loginSchritt === 2}
         <form onsubmit={geheZuSchritt3} class="auth-form">
-          <div class="field">
-            <label for="username">Username</label>
-            <input type="text" id="username" placeholder="z.B. max_power" bind:value={usernameInput} required />
-          </div>
           <div class="name-row">
             <div class="field grow">
               <label for="vorname">Vorname</label>
-              <div class="input-plus">
-                <input type="text" id="vorname" placeholder="Max" bind:value={vornameInput} required />
-                {#if !zeigtZweitname}
-                  <button type="button" class="plus-btn" onclick={() => zeigtZweitname = true} title="Zweitname">+</button>
-                {/if}
-              </div>
+              <input type="text" id="vorname" placeholder="Max" bind:value={vornameInput} required />
             </div>
-            {#if zeigtZweitname}
-              <div class="field grow">
-                <label for="zweitname">2. Name</label>
-                <input type="text" id="zweitname" placeholder="Maria" bind:value={zweitnameInput} />
-              </div>
-            {/if}
             <div class="field grow">
               <label for="nachname">Nachname</label>
               <input type="text" id="nachname" placeholder="Mustermann" bind:value={nachnameInput} required />
