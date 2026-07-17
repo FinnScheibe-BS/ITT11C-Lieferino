@@ -4,7 +4,7 @@
   import { api, getToken } from '$lib/api/api.js';
   import { t } from '$lib/utils/i18n.js';
 
-  let user = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
+  let user = $state({ vorname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
   let geladen = $state(false);
 
   // Edit-Modus gilt jetzt pro BEREICH (Kategorie) statt pro Feld
@@ -15,7 +15,7 @@
   });
 
   // Temporäre Inputs für die Bearbeitung
-  let inputs = $state({ username: "", vorname: "", zweitname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
+  let inputs = $state({ vorname: "", nachname: "", strasse: "", hausnummer: "", plz: "", ort: "", email: "", passwort: "" });
 
   // Hinweis: onMount feuert in diesem Setup nicht zuverlässig -> $effect (läuft sicher).
   let initGeladen = false;
@@ -27,7 +27,9 @@
       user = JSON.parse(gespeicherterUser);
       // Inputs initialisieren
       Object.keys(user).forEach(key => {
-        inputs[key] = user[key] || "";
+        if (key in inputs) {
+          inputs[key] = user[key] || "";
+        }
       });
       inputs.passwort = "";
 
@@ -65,7 +67,7 @@
     await api('/api/me', {
       method: 'PUT',
       body: {
-        username: user.username, vorname: user.vorname,
+        vorname: user.vorname,
         nachname: user.nachname, geburtsdatum: user.geburtsdatum || '',
         adressen: user.adressen || []
       }
@@ -126,7 +128,6 @@
     logout();
     window.location.href = '/';
   }
-
 </script>
 
 <div class="account-container">
@@ -146,13 +147,6 @@
             <button onclick={() => editBereich.login = true} class="edit-icon-btn" title="Gruppe bearbeiten">{$t('acc.edit')}</button>
           {/if}
         </div>
-        
-        <div class="info-block">
-          <span class="label">{$t('acc.username')}</span>
-          <div class="block-content">
-            {#if !editBereich.login} <span class="value">@{user.username}</span> {:else} <input type="text" bind:value={inputs.username} class="inline-input" /> {/if}
-          </div>
-        </div>
 
         <div class="info-block">
           <span class="label">{$t('auth.email')}</span>
@@ -169,7 +163,7 @@
         </div>
 
         {#if editBereich.login}
-          <button onclick={() => bereichSpeichern('login', ['username', 'email'])} class="save-group-btn">{$t('acc.save_login')}</button>
+          <button onclick={() => bereichSpeichern('login', ['email'])} class="save-group-btn">{$t('acc.save_login')}</button>
         {/if}
       </div>
 
@@ -189,17 +183,6 @@
         </div>
 
         <div class="info-block">
-          <span class="label">{$t('acc.middlename')}</span>
-          <div class="block-content">
-            {#if !editBereich.persoenlich}
-              <span class="value {user.zweitname ? '' : 'placeholder-text'}">{user.zweitname ? user.zweitname : $t('acc.no_middle')}</span>
-            {:else} 
-              <input type="text" bind:value={inputs.zweitname} placeholder="Optional" class="inline-input" /> 
-            {/if}
-          </div>
-        </div>
-
-        <div class="info-block">
           <span class="label">{$t('acc.lastname')}</span>
           <div class="block-content">
             {#if !editBereich.persoenlich} <span class="value">{user.nachname}</span> {:else} <input type="text" bind:value={inputs.nachname} class="inline-input" /> {/if}
@@ -207,7 +190,7 @@
         </div>
 
         {#if editBereich.persoenlich}
-          <button onclick={() => bereichSpeichern('persoenlich', ['vorname', 'zweitname', 'nachname'])} class="save-group-btn">{$t('acc.save_names')}</button>
+          <button onclick={() => bereichSpeichern('persoenlich', ['vorname', 'nachname'])} class="save-group-btn">{$t('acc.save_names')}</button>
         {/if}
       </div>
 
@@ -444,13 +427,6 @@
   .password-dots,
   .punkte-zahl {
     color: #f9c932 !important;
-  }
-
-  .placeholder-text {
-    color: rgba(245, 240, 232, 0.42) !important;
-    font-weight: 400;
-    font-style: italic;
-    font-size: 0.95rem;
   }
 
   .password-dots { letter-spacing: 2px; }
