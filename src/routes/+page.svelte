@@ -10,6 +10,7 @@
   import { bewertungsSchnitt } from '$lib/stores/bewertungsSchnitt.js';
   import { eingeloggt, login } from '$lib/stores/auth.js';
   import { t } from '$lib/utils/i18n.js';
+  
 
   // ════════════════ AUTH STATE ════════════════
   let loginSchritt = $state(1);
@@ -29,16 +30,19 @@
   let geburtsdatumInput = $state("");
   let altersFehler = $state("");
   let namensFehler = $state("");
+  
 
   function nameGueltig(name) {
     return /^[A-Za-zÄÖÜäöüß' -]{2,}$/.test(name.trim());
   }
+  
 
   let heutigesDatumIso = new Date().toISOString().split('T')[0];
   let strasseInput = $state("");
   let hausnummerInput = $state("");
   let plzInput = $state("");
   let ortInput = $state("");
+  
 
   // ════════════════ AUTH FUNCTIONS ════════════════
   async function geheZuSchritt2(e) {
@@ -61,6 +65,7 @@
     registrierFehler = "";
     loginSchritt = 2;
   }
+  
 
   function geheZuSchritt3(e) {
     e.preventDefault();
@@ -90,6 +95,7 @@
     altersFehler = "";
     loginSchritt = 3;
   }
+  
 
   async function registrationAbschliessen(e) {
     e.preventDefault();
@@ -151,17 +157,17 @@
     registrierFehler = "";
     registrierAnforderungen = [];
     try {
-    const reg = await registriere({
-      Vorname: vornameInput,
-      Nachname: nachnameInput,
-      Telefonnummer: "", // Falls du kein Input hast, leerer String (oder füge ein Input hinzu)
-      Email_Adresse: emailInput,
-      Passwort: passwortInput,
-      Strasse: strasseInput,
-      Hausnummer: hausnummerInput,
-      PLZ: plzInput,
-      Ort: ortInput
-  });
+      const reg = await registriere({
+        Vorname: vornameInput,
+        Nachname: nachnameInput,
+        Telefonnummer: "",
+        Email_Adresse: emailInput,
+        Passwort: passwortInput,
+        Strasse: strasseInput,
+        Hausnummer: hausnummerInput,
+        PLZ: plzInput,
+        Ort: ortInput
+      });
       if (reg.ok && reg.daten?.needsVerification) {
         zeigeAbschluss = true;
         return;
@@ -177,21 +183,22 @@
       registrierFehler = "Netzwerkfehler.";
     }
   }
+  
 
   async function abschlussFertig() {
     try {
       await api('/api/me', {
         method: 'PUT',
         body: {
-          Vorname: vornameInput, 
-          Nachname: nachnameInput, 
+          Vorname: vornameInput,
+          Nachname: nachnameInput,
           Geburtsdatum: geburtsdatumInput,
-          Adressen: [{ 
-            label: 'Zuhause', 
-            Strasse: strasseInput, 
-            Hausnummer: hausnummerInput, 
-            PLZ: plzInput, 
-            Ort: ortInput 
+          Adressen: [{
+            label: 'Zuhause',
+            Strasse: strasseInput,
+            Hausnummer: hausnummerInput,
+            PLZ: plzInput,
+            Ort: ortInput
           }]
         }
       });
@@ -201,20 +208,24 @@
       login();
     }
   }
+  
 
   // ════════════════ RESTAURANT FILTER ════════════════
   let gewaehlterTyp = $state("alle");
   let sortierung = $state("standard");
   let maxMinBestellwert = $state(30);
   let suche = $state("");
+  
 
   let anzahl = $derived($warenkorb?.length ?? 0);
   let warenkorbSumme = $derived($warenkorb?.reduce((sum, item) => sum + (item.preis ?? 0), 0) ?? 0);
+  
 
   function schnittVon(r) {
     const s = $bewertungsSchnitt[r.slug];
     return s && s.anzahl > 0 ? s.schnitt : r.bewertung;
   }
+  
 
   let gefilterteRestaurants = $derived(
     $aktiveRestaurants.filter(r => {
@@ -224,14 +235,16 @@
       return typPasst && preisPasst && suchePasst;
     })
   );
+  
 
-  // ⭐ TOP 5 statt TOP 10
   let top5Restaurants = $derived(
     [...$aktiveRestaurants].sort((a, b) => schnittVon(b) - schnittVon(a)).slice(0, 5)
   );
+  
 
   let typen = $derived([...new Set($aktiveRestaurants.map((r) => r.typ))]);
 </script>
+  
 
 <!-- ░░░ NICHT EINGELOGGT: Registrierung ░░░ -->
 {#if !$eingeloggt}
@@ -454,15 +467,11 @@
       <span class="float-food food-5">🍰</span>
       <span class="float-food food-6">🥗</span>
     </div>
-    <div class="scroll-indicator">
-      <span class="scroll-text">Scrollen</span>
-      <div class="scroll-mouse">
-        <div class="scroll-wheel"></div>
-      </div>
-    </div>
+    <!-- ✅ SCROLL INDICATOR ENTFERNT -->
   </section>
+  
 
-  <!-- ░░░ CONTROLS & FILTER ░░░ -->
+  <!-- ░░░ CONTROLS & FILTER – MIT MEHR ABSTAND (+60px Margin Top) ░░░ -->
   <div class="controls">
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
@@ -484,6 +493,7 @@
       </div>
     </div>
   </div>
+  
 
   <!-- ░░░ TOP 5 RESTAURANTS ░░░ -->
   {#if gewaehlterTyp === "alle"}
@@ -512,6 +522,7 @@
       {/each}
     </div>
   {/if}
+  
 
   <!-- ░░░ ALL RESTAURANTS GRID ░░░ -->
   <div class="section-header grid-section-header">
@@ -537,6 +548,7 @@
     {/each}
   </div>
 {/if}
+  
 
 <style>
 /* ════════════════════════════════════════════════════════════════
@@ -564,6 +576,7 @@
   --text: #1a1200;
   --text-muted: rgba(60, 45, 10, 0.72);
 }
+  
 
 /* ════════════════════════════════════════════════════════════════
      HERO BANNER
@@ -936,48 +949,11 @@
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-20px) rotate(5deg); }
 }
-.scroll-indicator {
-  position: absolute;
-  bottom: 32px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  z-index: 10;
-}
-.scroll-text {
-  font-size: 0.75rem;
-  color: rgba(245,240,232,0.5);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-.scroll-mouse {
-  width: 26px;
-  height: 40px;
-  border: 2px solid rgba(230,168,0,0.4);
-  border-radius: 13px;
-  position: relative;
-}
-.scroll-wheel {
-  width: 4px;
-  height: 8px;
-  background: #f9c932;
-  border-radius: 2px;
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  animation: scroll-wheel 1.5s ease-in-out infinite;
-}
-@keyframes scroll-wheel {
-  0%, 100% { opacity: 1; transform: translateX(-50%) translateY(0); }
-  50% { opacity: 0.3; transform: translateX(-50%) translateY(8px); }
-}
+/* ✅ SCROLL INDICATOR CSS ENTFERNT */
+  
 
 /* ════════════════════════════════════════════════════════════════
-     CONTROLS SECTION
+     CONTROLS SECTION – MIT MEHR ABSTAND NACH OBEN
      ════════════════════════════════════════════════════════════════ */
 .controls {
   display: flex;
@@ -986,7 +962,7 @@
   justify-content: space-between;
   align-items: flex-end;
   max-width: 1200px;
-  margin: 0 auto 32px;
+  margin: 60px auto 32px; /* ✅ Von 0 auf 60px erhöht für mehr Atemraum */
   padding: 0 24px;
 }
 .search-wrap {
@@ -1000,8 +976,9 @@
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1.1rem;
-  opacity: 0.6;
+  font-size: 1.2rem; /* ✅ Etwas größer für bessere Sichtbarkeit */
+  z-index: 5; /* ✅ Z-Index hinzugefügt */
+  pointer-events: none; /* ✅ Klicks gehen durch zum Input */
 }
 .search-input {
   width: 100%;
@@ -1083,6 +1060,7 @@
 .filter-field input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.1);
 }
+  
 
 /* ════════════════════════════════════════════════════════════════
      SECTION HEADERS
@@ -1108,9 +1086,10 @@
 .grid-section-header {
   text-align: left;
 }
+  
 
 /* ════════════════════════════════════════════════════════════════
-     TOP 5 SCROLL TRACK - Gleiche Karten wie Grid
+     TOP 5 SCROLL TRACK
      ════════════════════════════════════════════════════════════════ */
 .top5-scroll-track {
   display: flex;
@@ -1135,11 +1114,11 @@
 .top5-scroll-track::-webkit-scrollbar-thumb:hover {
   background: rgba(230,168,0,0.6);
 }
+  
 
-/* TOP 5 Karte - nutzt jetzt restaurant-card Basis */
+/* TOP 5 Karte */
 .top5-card {
   flex: 0 0 300px;
-  /* Rank Badge für Top 5 */
 }
 .top5-card .rank {
   position: absolute;
@@ -1159,9 +1138,10 @@
   box-shadow: 0 4px 16px rgba(230, 168, 0, 0.5);
   border: 2px solid rgba(255, 255, 255, 0.2);
 }
+  
 
 /* ════════════════════════════════════════════════════════════════
-     RESTAURANT CARD - EINHEITLICHES DESIGN für TOP 5 & GRID
+     RESTAURANT CARD
      ════════════════════════════════════════════════════════════════ */
 .restaurant-card {
   display: flex !important;
@@ -1178,12 +1158,10 @@
   cursor: pointer;
   position: relative;
 }
-
 .restaurant-card:hover {
   border-color: rgba(230, 168, 0, 0.4);
   box-shadow: 0 8px 24px rgba(230, 168, 0, 0.15);
 }
-
 .card-bild {
   position: relative;
   width: 100%;
@@ -1196,7 +1174,6 @@
   background: radial-gradient(circle at 50% 40%, rgba(230, 168, 0, 0.12), rgba(0, 0, 0, 0) 70%);
   z-index: 1;
 }
-
 .bewertung-badge {
   position: absolute;
   top: 12px;
@@ -1213,19 +1190,16 @@
   z-index: 20;
   pointer-events: none;
 }
-
 .bewertung-badge .stern {
   font-size: 0.9rem;
   line-height: 1;
 }
-
 .bewertung-badge .bewertung-wert {
   font-size: 0.85rem;
   font-weight: 700;
   color: #f9c932;
   line-height: 1;
 }
-
 .card-bild::after {
   content: '';
   position: absolute;
@@ -1239,7 +1213,6 @@
   z-index: 1;
   pointer-events: none;
 }
-
 .card-bild::before {
   content: '';
   position: absolute;
@@ -1252,7 +1225,6 @@
   z-index: 2;
   pointer-events: none;
 }
-
 .emoji-bild {
   font-size: 6.2rem;
   line-height: 1;
@@ -1261,11 +1233,9 @@
   position: relative;
   z-index: 10;
 }
-
 .restaurant-card:hover .emoji-bild {
   transform: scale(1.08);
 }
-
 .card-info {
   width: 100%;
   flex: 1 1 auto !important;
@@ -1281,7 +1251,6 @@
   position: relative;
   z-index: 3;
 }
-
 .card-info h3 {
   width: 100%;
   margin: 0 !important;
@@ -1300,7 +1269,6 @@
   -webkit-box-orient: vertical;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
-
 .card-meta {
   display: flex;
   justify-content: flex-start;
@@ -1308,7 +1276,6 @@
   gap: 6px;
   flex-shrink: 0;
 }
-
 .tag {
   display: inline-flex;
   align-items: center;
@@ -1324,6 +1291,7 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+  
 
 /* ════════════════════════════════════════════════════════════════
      RESTAURANT GRID
@@ -1337,6 +1305,7 @@
   padding: 0 24px;
   align-items: stretch;
 }
+  
 
 /* ════════════════════════════════════════════════════════════════
      AUTH / LOGIN STYLES
@@ -1394,7 +1363,7 @@
   border-radius: 50%;
   background: rgba(230,168,0,0.20);
   border: 1px solid rgba(230,168,0,0.35);
-  transition: background 0.3s, transform 0.3s;
+  transition: background 0.3s, transform 0.3s; /* ✅ Unterstriche entfernt */
 }
 .dot.aktiv {
   background: linear-gradient(135deg, var(--g1), var(--g2));
@@ -1452,7 +1421,7 @@
   font-weight: 700 !important;
   cursor: pointer !important;
   box-shadow: 0 4px 16px rgba(230,168,0,0.30) !important;
-  transition: opacity 0.15s, transform 0.15s !important;
+  transition: opacity 0.15s, transform 0.15s; /* ✅ Unterstriche entfernt */
   text-align: center;
   text-decoration: none;
   display: inline-block;
@@ -1470,7 +1439,7 @@
   font-size: 0.88rem !important;
   font-weight: 600 !important;
   cursor: pointer !important;
-  transition: background 0.15s !important;
+  transition: background 0.15s; /* ✅ Unterstriche entfernt */
 }
 .ghost-btn:hover { background: rgba(255,248,220,0.12) !important; }
 .plus-btn {
@@ -1494,7 +1463,7 @@
 .input-plus { display: flex; gap: 6px; align-items: center; }
 .pw-block { margin-top: 8px; }
 .pw-track { background: rgba(255,248,220,0.10); border-radius: 6px; height: 6px; overflow: hidden; }
-.pw-fill { height: 100%; border-radius: 6px; transition: width 0.3s, background 0.3s; }
+.pw-fill { height: 100%; border-radius: 6px; transition: width 0.3s, background 0.3s; } /* ✅ Unterstriche entfernt */
 .pw-label { font-size: 0.78rem; font-weight: 700; display: block; margin-top: 5px; }
 .pw-rules { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 5px 14px; }
 .pw-rules li { font-size: 0.76rem; color: rgba(245,240,232,0.78); }
@@ -1511,6 +1480,7 @@
 .agb-check { display: flex; align-items: flex-start; gap: 8px; font-size: 0.84rem; color: var(--text-muted); text-align: left; margin: 4px 0; }
 .agb-check input { margin-top: 3px; flex-shrink: 0; width: auto; }
 .agb-check a { color: var(--gold-text); font-weight: 600; text-decoration: underline; }
+  
 
 /* ════════════════════════════════════════════════════════════════
      RESPONSIVE
