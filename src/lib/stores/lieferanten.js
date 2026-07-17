@@ -1,35 +1,23 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
-import { getRestaurant } from '$lib/data';
 import { api } from '$lib/api/api.js';
 import { holeRestaurants } from '$lib/api/restaurantService.js';
 
-// 📡 BASIS-RESTAURANTS – kommen jetzt live von der API statt aus der
-// statischen $lib/data-Tabelle. Wird beim Laden im Browser befüllt.
+// 📡 BASIS-RESTAURANTS – live von der API
 export const restaurantsRoh = writable([]);
 
-export async function ladeRestaurantsVonApi() {
+// ✅ Funktion richtig benannt
+export async function ladeRestaurants() {
   const daten = await holeRestaurants();
   if (daten && daten.length > 0) {
     restaurantsRoh.set(daten);
   }
+  return daten; // ← Return für direkten Aufruf
 }
 
-if (browser) ladeRestaurantsVonApi();
+if (browser) ladeRestaurants();
 
-// 🔌 AKTIV/DEAKTIVIERT-STATUS DER LIEFERANTEN
-// Die Basis-Restaurants kommen jetzt live von der API (siehe oben).
-// Der Admin kann Lieferanten "deaktivieren" – wir merken uns die Slugs der
-// deaktivierten Lieferanten im localStorage. Deaktivierte Lieferanten sind für
-// normale Nutzer (öffentliche Listen) unsichtbar.
-//
-// 🚨🚨🚨 BACKEND-HINWEIS 🚨🚨🚨
-// Der Aktiv/Deaktiviert-Status liegt aktuell nur lokal im Browser. Das Backend
-// MUSS diesen Status speichern und ausliefern, z.B.:
-//   PATCH /api/admin/restaurants/:slug   Body: { aktiv: true|false }
-//   GET   /api/restaurants               liefert nur AKTIVE für normale Nutzer
-// Dann lädt das Frontend den Status vom Server statt aus dem localStorage.
-
+// 🔌 DEAKTIVIERTE LIEFERANTEN
 function ladeStart() {
   if (!browser) return [];
   try {
@@ -39,7 +27,6 @@ function ladeStart() {
   }
 }
 
-// Liste der Slugs, die deaktiviert sind.
 export const deaktivierteLieferanten = writable(ladeStart());
 
 if (browser) {
@@ -48,22 +35,16 @@ if (browser) {
   });
 }
 
-// Setzt ein Restaurant auf aktiv (true) oder deaktiviert (false).
 export function setzeLieferantAktiv(slug, aktiv) {
   deaktivierteLieferanten.update((liste) => {
     if (aktiv) {
-      return liste.filter((s) => s !== slug); // aus der Deaktiviert-Liste entfernen
+      return liste.filter((s) => s !== slug);
     }
-    return liste.includes(slug) ? liste : [...liste, slug]; // hinzufügen
+    return liste.includes(slug) ? liste : [...liste, slug];
   });
 }
 
-// Prüft, ob ein Lieferant aktiv ist.
-export function istAktiv(slug, deaktivierteListe) {
-  return !deaktivierteListe.includes(slug);
-}
-
-// 🥚 GEHEIMES RESTAURANT – nur per Cheat-Code (in der Suche: „dragonpizza") sichtbar.
+// 🥚 GEHEIMES RESTAURANT
 const GEHEIMES_RESTAURANT = {
   slug: 'drachen-grill',
   name: '🐉 Drachen-Grill (geheim)',
@@ -95,7 +76,7 @@ export function geheimFreischalten() {
   geheimFreigeschaltet.set(true);
 }
 
-// 🗄️ Vom Backend (Admin) deaktivierte Restaurants – serverseitig gesteuert.
+// 🗄️ BACKEND-DEAKTIVIERTE
 export const dbDeaktiviert = writable([]);
 
 export async function ladeAktivStatus() {
@@ -105,12 +86,9 @@ export async function ladeAktivStatus() {
   }
 }
 
-// Beim Start den echten Aktiv/Deaktiv-Status vom Backend holen.
 if (browser) ladeAktivStatus();
 
-// Nur die AKTIVEN Restaurants – für alle öffentlichen Listen (normale Nutzer).
-// Basis sind jetzt die live von der API geladenen Restaurants (restaurantsRoh).
-// Ausgeblendet wird, wer lokal ODER im Backend deaktiviert ist.
+// ✅ NUR AKTIVE RESTAURANTS
 export const aktiveRestaurants = derived(
   [restaurantsRoh, deaktivierteLieferanten, dbDeaktiviert, geheimFreigeschaltet],
   ([$restaurantsRoh, $deaktiviert, $dbDeaktiviert, $geheim]) => {
@@ -120,10 +98,29 @@ export const aktiveRestaurants = derived(
   }
 );
 
-// Sucht ein Restaurant per Slug/Name – inkl. dem Geheim-Restaurant.
+// ✅ FINDE RESTAURANT – sucht jetzt im Store, nicht in static data
 export function findeRestaurant(slugOderName) {
+  // Geheim-Restaurant
   if (slugOderName === GEHEIMES_RESTAURANT.slug || slugOderName === GEHEIMES_RESTAURANT.name) {
     return GEHEIMES_RESTAURANT;
   }
-  return getRestaurant(slugOderName);
+  
+  // 🔍 Im Store suchen (mit get() für synchronen Zugriff)
+  const alle = get(restaurantsRoh);
+  return alle.find(r => 
+    r.slug === slugOderName || 
+    r.name.toLowerCase() === slugOderName.toLowerCase()
+  ) || null;
+}
+
+// Helper: Slug erstellen (für Fallback-Suche)
+export function erstelleSlug(name) {
+  return name
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }

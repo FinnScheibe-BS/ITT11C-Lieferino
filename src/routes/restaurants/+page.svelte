@@ -330,13 +330,6 @@
     flex-shrink: 0;
   }
 
-  .lieferzeit {
-    color: rgba(255, 255, 255, 0.8) !important;
-    font-size: 0.75rem;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
   .leer {
     text-align: center;
     padding: 48px 24px;
