@@ -4,69 +4,93 @@
   let { restaurant, onHinweis } = $props();
 
   let mengen = $state({});
+  let bildFehler = $state({});
 
   function menge(id) {
-    return mengen[id] ?? 1;
+    return mengen[id] ?? 0;
   }
 
   function aendere(id, delta) {
-    const neu = Math.max(1, menge(id) + delta);
+    const neu = Math.max(0, menge(id) + delta);
     mengen = { ...mengen, [id]: neu };
   }
 
   function hinzufuegen(gericht) {
-    const anzahl = menge(gericht.id);
-
-    zumWarenkorb(gericht, restaurant.name, anzahl);
+    aendere(gericht.id, 1);
+    zumWarenkorb(gericht, restaurant.name, 1);
 
     if (onHinweis) {
-      onHinweis(`${anzahl}× ${gericht.name} hinzugefügt`);
+      onHinweis(`${gericht.name} hinzugefügt`);
     }
+  }
 
-    mengen = { ...mengen, [gericht.id]: 1 };
+  function bildUrl(gericht) {
+    return `http://172.30.4.90:8080/uploads/gerichte/${encodeURIComponent(gericht.name)}.jpeg`;
+  }
+
+  function markiereBildFehler(id) {
+    bildFehler = { ...bildFehler, [id]: true };
   }
 </script>
 
-<h2>Speisekarte</h2>
+<h2>🍽️ Speisekarte</h2>
 
 <div class="speisekarte">
   {#each restaurant.speisekarte as gericht}
     <article class="gericht">
-      <header class="gericht-kopf">
-        <h3>{gericht.name}</h3>
-        <span class="preis">{gericht.preis.toFixed(2)}€</span>
-      </header>
+      {#if !bildFehler[gericht.id]}
+        <img
+          class="gericht-bild"
+          src={bildUrl(gericht)}
+          alt={gericht.name}
+          loading="lazy"
+          onerror={() => markiereBildFehler(gericht.id)}
+        />
+      {:else}
+        <div class="gericht-bild gericht-bild-platzhalter">🍽️</div>
+      {/if}
 
-      <p class="gericht-desc">{gericht.beschreibung}</p>
+      <div class="gericht-text">
+        <div class="gericht-titelzeile">
+          <h3>{gericht.name}</h3>
+          {#if gericht.veg}<span class="veg-punkt" title="vegetarisch">🌱</span>{/if}
+        </div>
 
-      <div class="gericht-tags">
-        {#if gericht.veg}
-          <span class="veg-tag">🌱 vegetarisch</span>
-        {/if}
+        <p class="gericht-desc">{gericht.beschreibung}</p>
+
         {#if gericht.allergene && gericht.allergene.length > 0}
-          <span class="allergene">Enthält: {gericht.allergene.join(', ')}</span>
+          <p class="allergene">{gericht.allergene.join(' · ')}</p>
         {/if}
       </div>
 
-      <footer class="gericht-fuss">
-        <div class="stepper" aria-label="Menge auswählen">
-          <button onclick={() => aendere(gericht.id, -1)} aria-label="Weniger">−</button>
-          <span>{menge(gericht.id)}</span>
-          <button onclick={() => aendere(gericht.id, 1)} aria-label="Mehr">+</button>
-        </div>
+      <div class="gericht-aktion">
+        <span class="preis">{gericht.preis.toFixed(2)}€</span>
 
-        <button class="add-btn" onclick={() => hinzufuegen(gericht)}>
-          Hinzufügen
-        </button>
-      </footer>
+        {#if menge(gericht.id) === 0}
+          <button class="plus-btn" onclick={() => hinzufuegen(gericht)} aria-label="Hinzufügen">
+            +
+          </button>
+        {:else}
+          <div class="stepper">
+            <button onclick={() => aendere(gericht.id, -1)} aria-label="Weniger">−</button>
+            <span>{menge(gericht.id)}</span>
+            <button
+              onclick={() => {
+                aendere(gericht.id, 1);
+                zumWarenkorb(gericht, restaurant.name, 1);
+              }}
+              aria-label="Mehr"
+            >+</button>
+          </div>
+        {/if}
+      </div>
     </article>
   {/each}
 </div>
 
 <style>
 h2 {
-  margin: 0 0 18px;
-  font-size: 1.25rem;
+  margin: 0 0 16px;
 }
 
 .speisekarte {
@@ -75,128 +99,169 @@ h2 {
 }
 
 .gericht {
-  display: grid;
-  gap: 8px;
-  padding: 22px 4px;
-  border-bottom: 1px solid rgba(230, 168, 0, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 4px;
+  border-bottom: 1px solid rgba(230, 168, 0, 0.1);
+  transition: background-color 0.15s ease;
+}
+
+.gericht:first-child {
+  padding-top: 4px;
 }
 
 .gericht:last-child {
   border-bottom: none;
+  padding-bottom: 4px;
 }
 
-.gericht-kopf {
+.gericht:hover {
+  background: rgba(230, 168, 0, 0.04);
+}
+
+.gericht-bild {
+  width: 88px;
+  height: 88px;
+  min-width: 88px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: rgba(255, 248, 220, 0.06);
+}
+
+.gericht-bild-platzhalter {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  border: 1px solid rgba(230, 168, 0, 0.15);
 }
 
-.gericht-kopf h3 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
+.gericht-text {
+  flex: 1;
+  min-width: 0;
 }
 
-.preis {
-  flex-shrink: 0;
-  color: #f9c932;
-  font-weight: 800;
-  font-size: 1.05rem;
-  font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
-}
-
-.gericht-desc {
-  color: rgba(245, 240, 232, 0.68);
-  font-size: 0.9rem;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.gericht-tags {
+.gericht-titelzeile {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-.veg-tag {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 3px 10px;
-  background: rgba(99, 212, 113, 0.12);
-  border: 1px solid rgba(99, 212, 113, 0.28);
-  color: #8ff09a;
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+.gericht-titelzeile h3 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.veg-punkt {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.gericht-desc {
+  color: rgba(245, 240, 232, 0.65);
+  line-height: 1.55;
+  margin: 6px 0 0;
+  max-width: 46ch;
 }
 
 .allergene {
-  color: rgba(245, 240, 232, 0.42);
-  font-size: 0.78rem;
+  color: rgba(245, 240, 232, 0.4);
+  font-size: 0.9rem;
+  margin: 8px 0 0;
 }
 
-.gericht-fuss {
+.gericht-aktion {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  gap: 12px;
-  margin-top: 6px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.preis {
+  color: #f9c932;
+  font-weight: 700;
+  font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
+  white-space: nowrap;
+}
+
+.plus-btn {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 1.2rem !important;
+  line-height: 1 !important;
+  background: transparent !important;
+  border: 1px solid rgba(230, 168, 0, 0.35) !important;
+  color: #f9c932 !important;
+}
+
+.plus-btn:hover {
+  background: rgba(230, 168, 0, 0.12) !important;
 }
 
 .stepper {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px;
-  border-radius: 999px;
-  background: rgba(255, 248, 220, 0.06);
-  border: 1px solid rgba(230, 168, 0, 0.18);
   font-family: 'Geist Sans', -apple-system, 'SF Pro Display', sans-serif;
 }
 
 .stepper button {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
   padding: 0 !important;
   border-radius: 50% !important;
-  font-size: 1rem !important;
+  font-size: 1.05rem !important;
   line-height: 1 !important;
+  background: transparent !important;
+  border: 1px solid rgba(230, 168, 0, 0.35) !important;
+  color: #f9c932 !important;
+}
+
+.stepper button:hover {
+  background: rgba(230, 168, 0, 0.12) !important;
 }
 
 .stepper span {
   min-width: 18px;
-  color: #f5f0e8;
   text-align: center;
-  font-weight: 800;
-}
-
-.add-btn {
-  white-space: nowrap;
+  font-weight: 700;
 }
 
 :global(html[data-theme='light']) .gericht {
   border-bottom-color: rgba(26, 18, 0, 0.08);
 }
 
+:global(html[data-theme='light']) .gericht:hover {
+  background: rgba(230, 168, 0, 0.05);
+}
+
 :global(html[data-theme='light']) .gericht-desc {
-  color: rgba(26, 18, 0, 0.72);
+  color: rgba(26, 18, 0, 0.62);
 }
 
 :global(html[data-theme='light']) .allergene {
-  color: rgba(26, 18, 0, 0.45);
-}
-
-:global(html[data-theme='light']) .stepper span {
-  color: #1a1200;
+  color: rgba(26, 18, 0, 0.4);
 }
 
 @media (max-width: 680px) {
-  .gericht-fuss {
-    justify-content: space-between;
+  .gericht {
+    gap: 14px;
+    padding: 22px 4px;
+  }
+
+  .gericht-bild {
+    width: 68px;
+    height: 68px;
+    min-width: 68px;
+  }
+
+  .gericht-desc {
+    max-width: none;
   }
 }
 </style>
